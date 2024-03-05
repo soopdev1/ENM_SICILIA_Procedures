@@ -9,15 +9,15 @@ package rc.so.exe;
  *
  * @author rcosco
  */
-public class DatiDiscenti {
+public class DatiDiscente {
 
 
     String username, pivacf, cf, protocollo, decreto, datadecreto;
 
-    public DatiDiscenti() {
+    public DatiDiscente() {
     }
 
-    public DatiDiscenti(String username, String pivacf, String cf, String protocollo, String decreto, String datadecreto) {
+    public DatiDiscente(String username, String pivacf, String cf, String protocollo, String decreto, String datadecreto) {
         this.username = username;
         this.pivacf = pivacf;
         this.cf = cf;

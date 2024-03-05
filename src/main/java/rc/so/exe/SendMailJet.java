@@ -9,13 +9,12 @@ package rc.so.exe;
  *
  * @author srotella
  */
+import com.mailjet.client.Base64;
 import com.mailjet.client.ClientOptions;
 import com.mailjet.client.MailjetClient;
 import com.mailjet.client.MailjetRequest;
 import com.mailjet.client.MailjetResponse;
 import com.mailjet.client.resource.Emailv31;
-import rc.so.exe.Constant;
-import rc.so.exe.Db_Bando;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -26,7 +25,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -37,15 +35,16 @@ import org.json.JSONObject;
  */
 public class SendMailJet {
 
-    public static boolean sendMail(String name, String[] to, String[] cc, String txt, String subject, Db_Bando dbb, Logger log) {
+    public static boolean sendMail(String name, String[] to, String[] cc, String txt, String subject, Db_Gest dbb, Logger log) {
         return sendMail(name, to, cc, new String[]{}, txt, subject, null, dbb, log);
     }
 
-    public static boolean sendMail(String name, String[] to, String[] cc, String[] ccn, String txt, String subject, Db_Bando dbb, Logger log) {
+    public static boolean sendMail(String name, String[] to, String[] cc, String[] ccn, String txt, String subject, Db_Gest dbb, Logger log) {
         return sendMail(name, to, cc, ccn, txt, subject, null, dbb, log);
     }
 
-    public static boolean sendMail(String name, String[] to, String[] cc, String[] bcc, String txt, String subject, File file, Db_Bando dbb, Logger log) {
+    public static boolean sendMail(String name, String[] to, String[] cc, String[] bcc, String txt, String subject, File file, Db_Gest dbb, Logger log) {
+        
         MailjetClient client;
         MailjetRequest request;
         MailjetResponse response;
@@ -124,9 +123,9 @@ public class SendMailJet {
             try {
                 filename = file.getName();
                 content_type = Files.probeContentType(file.toPath());
-                InputStream i = new FileInputStream(file);
-                b64 = new String(Base64.encodeBase64(IOUtils.toByteArray(i)));
-                i.close();
+                try (InputStream i = new FileInputStream(file)) {
+                    b64 = Base64.encode(IOUtils.toByteArray(i));
+                }
             } catch (IOException ex) {
                 ex.printStackTrace();
             }

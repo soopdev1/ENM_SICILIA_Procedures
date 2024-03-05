@@ -4,7 +4,7 @@ package testerclass;
 
 
 import static rc.so.exe.Constant.conf;
-import rc.so.exe.Db_Bando;
+import rc.so.exe.Db_Accreditamento;
 import rc.so.exe.Domande;
 import static rc.so.exe.Engine.bando;
 import java.sql.PreparedStatement;
@@ -33,7 +33,7 @@ public class Updateexistant {
     }
 
     private void update_domande_fase1() {
-        Db_Bando db1 = new Db_Bando(this.host);
+        Db_Accreditamento db1 = new Db_Accreditamento(this.host);
         try {
             String sql1 = "SELECT username FROM bando_neet_mcn a WHERE stato_domanda = 'A' AND decreto <> '-'";
             Statement st1 = db1.getConnection().createStatement();

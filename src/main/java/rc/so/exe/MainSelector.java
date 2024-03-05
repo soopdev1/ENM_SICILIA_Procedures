@@ -15,7 +15,7 @@ import java.util.logging.Logger;
  */
 public class MainSelector {
 
-    public static final Logger log = Constant.createLog("ENM_SICILIA_Procedura", "/mnt/mcn/sicilia_accr/temp/");
+    public static final Logger log = Constant.createLog("ENM_SICILIA_Procedura", "/mnt/mcn/test/log/");
 
     public static void main(String[] args) {
 
@@ -49,12 +49,77 @@ public class MainSelector {
         try {
             select_action = Integer.parseInt(args[1].trim());
         } catch (Exception e) {
-            select_action = 5;
+            select_action = 3;
         }
 
+        Sicilia_gestione sg = new Sicilia_gestione(testing);
+        switch (select_action) {
+            case 3 -> {
+                log.warning("GESTIONE SICILIA - ESTRAZIONI");
+                log.warning("GENERAZIONE FILE REPORT... INIZIO");
+                try {
+                        sg.report_docenti();
+                } catch (Exception e) {
+                }
+                try {
+                    sg.report_allievi();
+                } catch (Exception e) {
 
-//            Neet_gestione ne = new Neet_gestione(testing);
-            switch (select_action) {
+                }
+                try {
+                    sg.report_pf();
+                } catch (Exception e) {
+
+                }
+                log.warning("GENERAZIONE FILE REPORT... FINE");
+            }
+            case 5 -> {
+                log.warning("ACCREDITAMENTO SICILIA");
+                Engine accreditamento = new Engine(testing);
+
+                try {
+                    log.info("START ELENCO DOMANDE");
+                    accreditamento.elenco_domande_fase1();
+                    log.info("FINE ELENCO DOMANDE");
+                } catch (Exception e) {
+                    log.severe(estraiEccezione(e));
+                }
+
+                try {
+                    log.info("START UPDATE DOMANDE");
+                    accreditamento.update_domande_fase1();
+                    log.info("FINE UPDATE DOMANDE");
+                } catch (Exception e) {
+                    log.severe(estraiEccezione(e));
+                }
+
+                try {
+                    log.info("START AGGIORNA DATA CONVENZIONE");
+                    accreditamento.aggiorna_dataconvenzione_fase1();
+                    log.info("FINE AGGIORNA DATA CONVENZIONE");
+                } catch (Exception e) {
+                    log.severe(estraiEccezione(e));
+                }
+
+                try {
+                    log.info("START AGGIORNA REPORTISTICA");
+                    accreditamento.aggiorna_reportistica();
+                    log.info("FINE AGGIORNA REPORTISTICA");
+                } catch (Exception e) {
+                    log.severe(estraiEccezione(e));
+                }
+                try {
+                    log.info("START CREA REPORT");
+                    accreditamento.crea_report();
+                    log.info("FINE CREA REPORT");
+                } catch (Exception e) {
+                    log.severe(estraiEccezione(e));
+                }
+            }
+            default ->
+                log.severe("GESTIONE SICILIA - NESSUN METODO SELEZIONATO");
+
+        }
 //                case 0:
 //                    log.severe("GESTIONE NEET - NESSUN METODO SELEZIONATO");
 //                    break;
@@ -86,72 +151,10 @@ public class MainSelector {
 //                    } catch (Exception e) {
 //                    }
 //                    break;
-//                case 3:
-//                    log.warning("GESTIONE NEET - ESTRAZIONI");
-//                    log.warning("GENERAZIONE FILE REPORT... INIZIO");
-//                    try {
-//                        ne.report_docenti();
-//                    } catch (Exception e) {
-//                    }
-//                    try {
-//                        ne.report_allievi();
-//                    } catch (Exception e) {
-//
-//                    }
-//                    try {
-//                        ne.report_pf();
-//                    } catch (Exception e) {
-//
-//                    }
-//                    log.warning("GENERAZIONE FILE REPORT... FINE");
-//                    break;
 //                case 4:
 //                    log.warning("GESTIONE NEET - REPORT FAD");
 //                    Create.crea(true, testing);
 //                    break;
-                case 5:
-                    log.warning("ACCREDITAMENTO SICILIA");
-                    Engine accreditamento = new Engine(testing);
-
-                    try {
-                        log.info("START ELENCO DOMANDE");
-                        accreditamento.elenco_domande_fase1();
-                        log.info("FINE ELENCO DOMANDE");
-                    } catch (Exception e) {
-                        log.severe(estraiEccezione(e));
-                    }
-
-                    try {
-                        log.info("START UPDATE DOMANDE");
-                        accreditamento.update_domande_fase1();
-                        log.info("FINE UPDATE DOMANDE");
-                    } catch (Exception e) {
-                        log.severe(estraiEccezione(e));
-                    }
-
-                    try {
-                        log.info("START AGGIORNA DATA CONVENZIONE");
-                        accreditamento.aggiorna_dataconvenzione_fase1();
-                        log.info("FINE AGGIORNA DATA CONVENZIONE");
-                    } catch (Exception e) {
-                        log.severe(estraiEccezione(e));
-                    }
-
-                    try {
-                        log.info("START AGGIORNA REPORTISTICA");
-                        accreditamento.aggiorna_reportistica();
-                        log.info("FINE AGGIORNA REPORTISTICA");
-                    } catch (Exception e) {
-                        log.severe(estraiEccezione(e));
-                    }
-                    try {
-                        log.info("START CREA REPORT");
-                        accreditamento.crea_report();
-                        log.info("FINE CREA REPORT");
-                    } catch (Exception e) {
-                        log.severe(estraiEccezione(e));
-                    }
-                    break;
 //                case 6:
 //                    log.warning("REPAIR NEET");
 //                    Repair neetr = new Repair(testing, true);
@@ -186,11 +189,5 @@ public class MainSelector {
 //                } catch (Exception e) {
 //                }
 //                break;
-                default:
-                    log.severe("GESTIONE SICILIA - NESSUN METODO SELEZIONATO");
-                    break;
-            
-
-        }
     }
 }

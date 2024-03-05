@@ -1,15 +1,5 @@
-
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package rc.so.exe;
 
-import static rc.so.exe.Constant.conf;
-import static rc.so.exe.Constant.formatStringtoStringDateSQL;
-import static rc.so.exe.Constant.parseIntR;
-import rc.so.report.Utenti;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -27,16 +17,22 @@ import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import static org.apache.commons.lang3.StringUtils.stripAccents;
+import static rc.so.exe.Sicilia_gestione.log;
+import static rc.so.exe.Utils.conf;
+import static rc.so.exe.Utils.estraiEccezione;
+import static rc.so.exe.Utils.formatStringtoStringDateSQL;
+import static rc.so.exe.Utils.parseIntR;
+import rc.so.report.Utenti;
 
 /**
  *
  * @author raffaele
  */
-public class Db_Bando {
+public class Db_Gest {
 
     private Connection c = null;
 
-    public Db_Bando(String host, boolean survey) {
+    public Db_Gest(String host, boolean survey) {
 
         String driver = "com.mysql.cj.jdbc.Driver";
         String user = conf.getString("db.user");
@@ -71,7 +67,7 @@ public class Db_Bando {
         }
     }
     
-    public Db_Bando(String host) {
+    public Db_Gest(String host) {
 
         String driver = "com.mysql.cj.jdbc.Driver";
 
@@ -178,22 +174,27 @@ public class Db_Bando {
 
     public String formatStatoDomanda(String statoDomanda) {
         try {
-
             switch (statoDomanda) {
-                case "S":
+                case "S" -> {
                     return "NON PROCESSATA";
-                case "R":
+                }
+                case "R" -> {
                     return "RIGETTATA";
-                case "A":
+                }
+                case "A" -> {
                     return "APPROVATA";
-                case "A1":
+                }
+                case "A1" -> {
                     return "CONVENZIONE SA";
-                case "A2":
+                }
+                case "A2" -> {
                     return "SA ATTIVO";
-                case "A3":
+                }
+                case "A3" -> {
                     return "IN ATTESA FIRMA ENM";
-                default:
-                    break;
+                }
+                default -> {
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -251,7 +252,7 @@ public class Db_Bando {
         try {
             ArrayList<Comuni_rc> comuni_rc = query_comuni_rc();
             String sql = "SELECT * FROM " + table + " ORDER BY dataconsegna";
-            try (PreparedStatement ps = this.c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            try ( PreparedStatement ps = this.c.prepareStatement(sql);  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
 
                     String USERNAME = rs.getString("username");
@@ -293,23 +294,16 @@ public class Db_Bando {
                     }
 
                     String sql2 = "SELECT * FROM usersvalori WHERE username= '" + USERNAME + "'";
-                    try (PreparedStatement ps2 = this.c.prepareStatement(sql2); ResultSet rs2 = ps2.executeQuery()) {
+                    try ( PreparedStatement ps2 = this.c.prepareStatement(sql2);  ResultSet rs2 = ps2.executeQuery()) {
                         while (rs2.next()) {
                             String campo = rs2.getString("campo");
                             String valore = rs2.getString("valore").toUpperCase().trim();
                             String valore1 = rs2.getString("valore").toUpperCase().trim();
 
                             switch (campo) {
-                                case "ateco1":
-                                    ex1.setCODICEATECO(valore.toUpperCase());
-                                    break;
-                                case "sedeindirizzo":
-                                    ex1.setSEDELEGALEINDIRIZZO(valore.toUpperCase());
-                                    break;
-                                case "sedecap":
-                                    ex1.setSEDELEGALECAP(valore.toUpperCase());
-                                    break;
-                                case "sedecomune":
+                                case "sedeindirizzo" -> ex1.setSEDELEGALEINDIRIZZO(valore.toUpperCase());
+                                case "sedecap" -> ex1.setSEDELEGALECAP(valore.toUpperCase());
+                                case "sedecomune" -> {
                                     if (!valore.equals("")) {
                                         Comuni_rc c0 = comuni_rc.stream().filter(c1 -> (c1.getId() == parseIntR(valore))).findAny().orElse(null);
                                         if (c0 != null) {
@@ -317,8 +311,8 @@ public class Db_Bando {
                                         }
                                     }
                                     ex1.setSEDELEGALECOMUNE(valore1.toUpperCase());
-                                    break;
-                                case "sedeprov":
+                                }
+                                case "sedeprov" -> {
                                     if (!valore.equals("")) {
                                         Comuni_rc c0 = comuni_rc.stream().filter(c1 -> c1.getCodiceprovincia().equals(valore)).findAny().orElse(null);
                                         if (c0 != null) {
@@ -326,8 +320,8 @@ public class Db_Bando {
                                         }
                                     }
                                     ex1.setSEDELEGALEPROVINCIA(valore1.toUpperCase());
-                                    break;
-                                case "sederegione":
+                                }
+                                case "sederegione" -> {
                                     if (!valore.equals("")) {
                                         Comuni_rc c0 = comuni_rc.stream().filter(c1 -> c1.getCodiceregione().equals(valore)).findAny().orElse(null);
                                         if (c0 != null) {
@@ -335,15 +329,11 @@ public class Db_Bando {
                                         }
                                     }
                                     ex1.setSEDELEGALEREGIONE(valore1.toUpperCase());
-                                    break;
-                                case "email":
-                                    ex1.setEMAIL(valore.toUpperCase());
-                                    break;
-                                case "cell":
-                                    ex1.setTELEFONO(valore.toUpperCase());
-                                    break;
-                                default:
-                                    break;
+                                }
+                                case "email" -> ex1.setEMAIL(valore.toUpperCase());
+                                case "cell" -> ex1.setTELEFONO(valore.toUpperCase());
+                                default -> {
+                                }
                             }
 
                         }
@@ -358,7 +348,6 @@ public class Db_Bando {
                     ex1.setSEDE1REGIONE(getMapValue(allegato_a, "regioneaula1"));
                     ex1.setSEDE1TITOLODISP(getMapValue(allegato_a, "titolo1"));
                     ex1.setSEDE1MQ(getMapValue(allegato_a, "estremi1"));
-                    ex1.setSEDE1ACCRREG(getMapValue(allegato_a, "accreditamento1"));
 
                     ex1.setSEDE2INDIRIZZO(getMapValue(allegato_a, "indirizzo2"));
                     ex1.setSEDE2COMUNE(getMapValue(allegato_a, "citta2"));
@@ -366,7 +355,6 @@ public class Db_Bando {
                     ex1.setSEDE2REGIONE(getMapValue(allegato_a, "regioneaula2"));
                     ex1.setSEDE2TITOLODISP(getMapValue(allegato_a, "titolo2"));
                     ex1.setSEDE2MQ(getMapValue(allegato_a, "estremi2"));
-                    ex1.setSEDE2ACCRREG(getMapValue(allegato_a, "accreditamento2"));
 
                     ex1.setSEDE3INDIRIZZO(getMapValue(allegato_a, "indirizzo3"));
                     ex1.setSEDE3COMUNE(getMapValue(allegato_a, "citta3"));
@@ -374,7 +362,6 @@ public class Db_Bando {
                     ex1.setSEDE3REGIONE(getMapValue(allegato_a, "regioneaula3"));
                     ex1.setSEDE3TITOLODISP(getMapValue(allegato_a, "titolo3"));
                     ex1.setSEDE3MQ(getMapValue(allegato_a, "estremi3"));
-                    ex1.setSEDE3ACCRREG(getMapValue(allegato_a, "accreditamento3"));
 
                     ex1.setSEDE4INDIRIZZO(getMapValue(allegato_a, "indirizzo4"));
                     ex1.setSEDE4COMUNE(getMapValue(allegato_a, "citta4"));
@@ -382,7 +369,6 @@ public class Db_Bando {
                     ex1.setSEDE4REGIONE(getMapValue(allegato_a, "regioneaula4"));
                     ex1.setSEDE4TITOLODISP(getMapValue(allegato_a, "titolo4"));
                     ex1.setSEDE4MQ(getMapValue(allegato_a, "estremi4"));
-                    ex1.setSEDE4ACCRREG(getMapValue(allegato_a, "accreditamento4"));
 
                     ex1.setSEDE5INDIRIZZO(getMapValue(allegato_a, "indirizzo5"));
                     ex1.setSEDE5COMUNE(getMapValue(allegato_a, "citta5"));
@@ -390,63 +376,47 @@ public class Db_Bando {
                     ex1.setSEDE5REGIONE(getMapValue(allegato_a, "regioneaula5"));
                     ex1.setSEDE5TITOLODISP(getMapValue(allegato_a, "titolo5"));
                     ex1.setSEDE5MQ(getMapValue(allegato_a, "estremi5"));
-                    ex1.setSEDE5ACCRREG(getMapValue(allegato_a, "accreditamento5"));
 
                     ex1.setNDOCENTI(getMapValue(allegato_a, "numdocenti"));
 
-                    //
-                    String tiposoggetto = "";
-                    if (getMapValue(allegato_a, "soggettosingolo").equals("SI")) {
-                        tiposoggetto = "Soggetto Singolo";
-                    } else if (getMapValue(allegato_a, "costituenda").equals("SI")) {
-                        tiposoggetto = "Costituenda ATI/ATS o costituenda rete di imprese";
-                    } else if (getMapValue(allegato_a, "cosituita").equals("SI")) {
-                        tiposoggetto = "Costituita ATI/ATS che preveda mandato di rappresentanza specifico al capofila";
-                    } else if (getMapValue(allegato_a, "rete").equals("SI")) {
-                        tiposoggetto = "Costituita rete contratto dotata di organo comune con potere di rappresentanza";
-                    } else if (getMapValue(allegato_a, "consorzio").equals("SI")) {
-                        tiposoggetto = "Consorzio/Fondazione/Rete soggetto (Rete di imprese dotata di organo comune e di soggettività giuridica)";
-                    }
-                    ex1.setTIPOLOGIASOGGETTO(tiposoggetto);
-
                     String sql3 = "select * from allegato_b where username = '" + USERNAME + "' ORDER BY id";
 
-                    try (PreparedStatement ps3 = this.c.prepareStatement(sql3); ResultSet rs3 = ps3.executeQuery()) {
+                    try ( PreparedStatement ps3 = this.c.prepareStatement(sql3);  ResultSet rs3 = ps3.executeQuery()) {
                         while (rs3.next()) {
 
                             switch (rs3.getInt("id")) {
-                                case 1:
+                                case 1 -> {
                                     ex1.setNOMEDOCENTE1(rs3.getString("nome").toUpperCase());
                                     ex1.setCOGNOMEDOCENTE1(rs3.getString("cognome").toUpperCase());
                                     ex1.setCFDOCENTE1(rs3.getString("cf").toUpperCase());
                                     ex1.setFASCIAPROPOSTADOCENTE1(rs3.getString("fascia").toUpperCase());
-                                    break;
-                                case 2:
+                                }
+                                case 2 -> {
                                     ex1.setNOMEDOCENTE2(rs3.getString("nome").toUpperCase());
                                     ex1.setCOGNOMEDOCENTE2(rs3.getString("cognome").toUpperCase());
                                     ex1.setCFDOCENTE2(rs3.getString("cf").toUpperCase());
                                     ex1.setFASCIAPROPOSTADOCENTE2(rs3.getString("fascia").toUpperCase());
-                                    break;
-                                case 3:
+                                }
+                                case 3 -> {
                                     ex1.setNOMEDOCENTE3(rs3.getString("nome").toUpperCase());
                                     ex1.setCOGNOMEDOCENTE3(rs3.getString("cognome").toUpperCase());
                                     ex1.setCFDOCENTE3(rs3.getString("cf").toUpperCase());
                                     ex1.setFASCIAPROPOSTADOCENTE3(rs3.getString("fascia").toUpperCase());
-                                    break;
-                                case 4:
+                                }
+                                case 4 -> {
                                     ex1.setNOMEDOCENTE4(rs3.getString("nome").toUpperCase());
                                     ex1.setCOGNOMEDOCENTE4(rs3.getString("cognome").toUpperCase());
                                     ex1.setCFDOCENTE4(rs3.getString("cf").toUpperCase());
                                     ex1.setFASCIAPROPOSTADOCENTE4(rs3.getString("fascia").toUpperCase());
-                                    break;
-                                case 5:
+                                }
+                                case 5 -> {
                                     ex1.setNOMEDOCENTE5(rs3.getString("nome").toUpperCase());
                                     ex1.setCOGNOMEDOCENTE5(rs3.getString("cognome").toUpperCase());
                                     ex1.setCFDOCENTE5(rs3.getString("cf").toUpperCase());
                                     ex1.setFASCIAPROPOSTADOCENTE5(rs3.getString("fascia").toUpperCase());
-                                    break;
-                                default:
-                                    break;
+                                }
+                                default -> {
+                                }
                             }
                         }
 
@@ -582,7 +552,7 @@ public class Db_Bando {
     public List<Utenti> list_Allievi_noAccento(int idpr) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='01' AND idprogetti_formativi = " + idpr;
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idpr;
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
                     Utenti u = new Utenti(rs.getInt("idallievi"),
@@ -602,7 +572,7 @@ public class Db_Bando {
     public List<Utenti> list_Allievi_noAccento(int idpr, int gruppo) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='01' AND idprogetti_formativi = " + idpr + " AND gruppo_faseB = " + gruppo;
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idpr + " AND gruppo_faseB = " + gruppo;
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
                     Utenti u = new Utenti(rs.getInt("idallievi"),
@@ -622,7 +592,7 @@ public class Db_Bando {
     public List<Utenti> list_Allievi(int idpr) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='01' AND idprogetti_formativi = " + idpr;
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idpr;
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
                     Utenti u = new Utenti(rs.getInt("idallievi"),
@@ -705,13 +675,13 @@ public class Db_Bando {
         return null;
     }
 
-    public List<DatiDiscenti> getDatiDiscenti() {
-        List<DatiDiscenti> out = new ArrayList<>();
+    public List<DatiDiscente> getDati() {
+        List<DatiDiscente> out = new ArrayList<>();
         try {
             String sql0 = "SELECT username,pivacf,cf,protocollo,decreto,datadecreto FROM bando_sicilia_mcn WHERE stato_domanda='A'";
             try ( Statement st0 = this.c.createStatement();  ResultSet rs0 = st0.executeQuery(sql0)) {
                 while (rs0.next()) {
-                    out.add(new DatiDiscenti(rs0.getString(1), rs0.getString(2), rs0.getString(3), rs0.getString(4), rs0.getString(5), rs0.getString(6)));
+                    out.add(new DatiDiscente(rs0.getString(1), rs0.getString(2), rs0.getString(3), rs0.getString(4), rs0.getString(5), rs0.getString(6)));
                 }
             }
         } catch (Exception ex) {
@@ -719,5 +689,59 @@ public class Db_Bando {
         }
         return out;
     }
+    
+    public int get_allievi_accreditati(int idpr) {
+        int out = 0;
+        try {
+            String sql = "SELECT COUNT(a.idallievi) FROM allievi a WHERE a.id_statopartecipazione IN ('13','14','15','18','19') AND a.idprogetti_formativi=" + idpr;
+            try (Statement st1 = this.c.createStatement(); ResultSet rs = st1.executeQuery(sql)) {
+                if (rs.next()) {
+                    out = rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            log.severe(estraiEccezione(e));
+        }
+        return out;
+    }
 
+    public Long getIdComune(String istat) {
+        try {
+            String sql = "SELECT a.idcomune FROM comuni a WHERE a.istat = ?";
+            try (PreparedStatement ps = this.c.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+                ps.setString(1, istat);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            insertTracking("ERROR SYSTEM", estraiEccezione(ex));
+        }
+        return 0L;
+    }
+    
+    
+    public boolean insert_UD_presenza (String completa,String datafine,String datainizio,String fase,String orepresenze,String oretotali,String ud,String idallievi){        
+        try {
+            String ins = "INSERT INTO presenzeudallievi (completa,datafine,datainizio,fase,orepresenze,oretotali,ud,idallievi) VALUES (?,?,?,?,?,?,?,?)";
+            try (PreparedStatement ps = this.c.prepareStatement(ins, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+                ps.setString(1, completa);
+                ps.setString(2, datafine);
+                ps.setString(3, datainizio);
+                ps.setString(4, fase);
+                ps.setString(5, orepresenze);
+                ps.setString(6, oretotali);
+                ps.setString(7, ud);
+                ps.setString(8, idallievi);
+                ps.execute();
+                return true;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+//            insertTracking("ERROR SYSTEM", estraiEccezione(ex));
+        }
+        return false;
+    }
 }

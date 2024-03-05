@@ -5,7 +5,7 @@
 package testerclass;
 
 import static rc.so.exe.Constant.conf;
-import rc.so.exe.Db_Bando;
+import rc.so.exe.Db_Accreditamento;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -27,7 +27,7 @@ public class UpdateQuest {
             String host_DED = conf.getString("db.host") + ":3306/enm_gestione_dd_prod";
 //            String host_NEET = conf.getString("db.host") + ":3306/enm_gestione_neet_prod";
 
-            Db_Bando db0 = new Db_Bando(host_DED);
+            Db_Accreditamento db0 = new Db_Accreditamento(host_DED);
             try (Stream<String> stream = Files.lines(Paths.get(txt.getPath()))) {
                 stream.forEach(mail -> {
                     try {

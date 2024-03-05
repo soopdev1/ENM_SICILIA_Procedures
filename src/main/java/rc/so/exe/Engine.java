@@ -57,7 +57,7 @@ public class Engine {
         try {
             DateTime dt1 = new DateTime();
 
-            Db_Bando db1 = new Db_Bando(this.host);
+            Db_Accreditamento db1 = new Db_Accreditamento(this.host);
             String contentb64 = db1.getPath("excel.templatereport.2023");
             List<ExcelDomande> list = db1.listaconsegnate("bando_sicilia_mcn");
             String pathTemp = db1.getPath("pathtemp");
@@ -406,7 +406,7 @@ public class Engine {
 //        }
 //    }
     public void aggiorna_dataconvenzione_fase1() {
-        Db_Bando db1 = new Db_Bando(this.host);
+        Db_Accreditamento db1 = new Db_Accreditamento(this.host);
         try {
             String sql1 = "SELECT a.username FROM bando_sicilia_mcn a WHERE a.dataupconvenzionefinale ='-'";
             try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1);) {
@@ -438,7 +438,7 @@ public class Engine {
     }
 
     public void elenco_domande_fase1() {
-        Db_Bando db1 = new Db_Bando(this.host);
+        Db_Accreditamento db1 = new Db_Accreditamento(this.host);
         try {
 
             String sql1 = "SELECT username,id,stato,datainvio FROM domandecomplete WHERE stato = '1' AND id NOT IN (SELECT DISTINCT(coddomanda) FROM bando_sicilia_mcn) GROUP BY id";
@@ -548,7 +548,7 @@ public class Engine {
     }
 
     public void aggiorna_reportistica() {
-        Db_Bando db1 = new Db_Bando(this.host);
+        Db_Accreditamento db1 = new Db_Accreditamento(this.host);
         try {
 
             String sql1 = "SELECT count(*),stato_domanda FROM bando_sicilia_mcn GROUP BY stato_domanda";
@@ -587,7 +587,7 @@ public class Engine {
     }
 
     public void update_domande_fase1() {
-        Db_Bando db1 = new Db_Bando(this.host);
+        Db_Accreditamento db1 = new Db_Accreditamento(this.host);
         try {
             String sql1 = "SELECT username FROM bando_sicilia_mcn a WHERE decreto <> '-'";
             try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {

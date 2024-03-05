@@ -175,7 +175,7 @@ public class Constant {
             return Logger.getLogger(Constant.class.getName());
         }
     }
-
+    
     public static String estraiEccezione(Exception ec1) {
         try {
             String stack_nam = ec1.getStackTrace()[0].getMethodName();
@@ -687,7 +687,7 @@ public class Constant {
         }
     }
 
-    public static int getIdUser(Db_Bando db, String nome, String cognome, int idpr, int idsa, String ruolo) {
+    public static int getIdUser(Db_Accreditamento db, String nome, String cognome, int idpr, int idsa, String ruolo) {
         if (ruolo.equalsIgnoreCase("DOCENTE")) {
             return getIdDocente(db, nome, cognome, idsa);
         } else if (ruolo.equalsIgnoreCase("ALLIEVO")) {
@@ -696,7 +696,7 @@ public class Constant {
         return 0;
     }
 
-    private static int getIdAllievo(Db_Bando db, String nome, String cognome, int idpr) {
+    private static int getIdAllievo(Db_Accreditamento db, String nome, String cognome, int idpr) {
         try {
             String sql = "SELECT idallievi FROM allievi WHERE nome = ? AND cognome = ? AND idprogetti_formativi = ? AND id_statopartecipazione = ? ORDER BY idallievi DESC LIMIT 1";
             try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -715,7 +715,7 @@ public class Constant {
         return 0;
     }
 
-    private static int getIdDocente(Db_Bando db, String nome, String cognome, int idsa) {
+    private static int getIdDocente(Db_Accreditamento db, String nome, String cognome, int idsa) {
         try {
             String sql = "SELECT iddocenti FROM docenti WHERE nome = ? AND cognome = ? AND idsoggetti_attuatori = ? AND stato = ? ORDER BY iddocenti DESC LIMIT 1";
             try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {

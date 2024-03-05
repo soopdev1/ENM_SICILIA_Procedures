@@ -9,7 +9,7 @@ import com.mailjet.client.MailjetRequest;
 import com.mailjet.client.MailjetResponse;
 import com.mailjet.client.resource.Emailv31;
 import rc.so.exe.Constant;
-import rc.so.exe.Db_Bando;
+import rc.so.exe.Db_Accreditamento;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -42,7 +42,7 @@ public class MailTracking {
 //        bando.closeDB();
 //    }
 
-    public static boolean sendMail(String name, String[] to, String[] cc, String[] bcc, String txt, String subject, Db_Bando dbb) {
+    public static boolean sendMail(String name, String[] to, String[] cc, String[] bcc, String txt, String subject, Db_Accreditamento dbb) {
         MailjetClient client;
         MailjetRequest request;
         MailjetResponse response;

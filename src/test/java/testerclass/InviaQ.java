@@ -8,7 +8,7 @@ package testerclass;
 
 
 import rc.so.exe.Constant;
-import rc.so.exe.Db_Bando;
+import rc.so.exe.Db_Accreditamento;
 import static rc.so.exe.SendMailJet.sendMail;
 import java.sql.ResultSet;
 import java.sql.Statement;

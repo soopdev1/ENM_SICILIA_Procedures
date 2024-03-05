@@ -26,7 +26,7 @@ import static rc.so.exe.Constant.setCell;
 import static rc.so.exe.Constant.tipologia_costo;
 import static rc.so.exe.Constant.tipologia_giustificativo;
 import static rc.so.exe.Constant.zipListFiles;
-import rc.so.exe.Db_Bando;
+import rc.so.exe.Db_Accreditamento;
 import rc.so.exe.Items;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -98,7 +98,7 @@ public class Excel {
     private static final XSSFColor white = new XSSFColor(bianco, new DefaultIndexedColorMap());
     private static final Long hh36 = Long.valueOf(129600000);
 
-    public static File prospetto_riepilogo_ded(int idestrazione, List<Integer> list_idpr, Db_Bando db1) { // DA FARE
+    public static File prospetto_riepilogo_ded(int idestrazione, List<Integer> list_idpr, Db_Accreditamento db1) { // DA FARE
         List<File> output = new ArrayList<>();
         File output_xlsx = null;
 
@@ -1219,7 +1219,7 @@ public class Excel {
         return null;
     }
 
-    public static File prospetto_riepilogo_neet(int idestrazione, List<Integer> list_idpr, Db_Bando db1) {
+    public static File prospetto_riepilogo_neet(int idestrazione, List<Integer> list_idpr, Db_Accreditamento db1) {
         List<File> output = new ArrayList<>();
 
         File output_xlsx = null;
