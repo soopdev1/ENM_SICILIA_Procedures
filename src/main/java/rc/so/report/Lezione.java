@@ -4,7 +4,6 @@
  * and open the template in the editor.
  */
 package rc.so.report;
-
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
@@ -16,9 +15,10 @@ import static org.apache.commons.lang3.builder.ToStringStyle.JSON_STYLE;
  */
 public class Lezione {
 
-    int id, gruppo;
+    int id, gruppo,mpid_modello;
     List<Integer> docente;
     String giorno, start, end, codiceud, ore, nomestanza;
+    
 
     public Lezione(int id, List<Integer> docente, String giorno, String start, String end, String codiceud, String ore, int gruppo, String nomestanza) {
         this.ore = ore;
@@ -46,6 +46,14 @@ public class Lezione {
     }
 
     public Lezione() {
+    }
+
+    public int getMpid_modello() {
+        return mpid_modello;
+    }
+
+    public void setMpid_modello(int mpid_modello) {
+        this.mpid_modello = mpid_modello;
     }
 
     public String getNomestanza() {

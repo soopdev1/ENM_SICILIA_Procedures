@@ -8,6 +8,7 @@ import static rc.so.exe.Constant.estraiEccezione;
 //import it.refill.otp.Sms;
 //import rc.so.report.Create;
 import java.util.logging.Logger;
+import static rc.so.report.Create.crearegistri;
 
 /**
  *
@@ -49,11 +50,19 @@ public class MainSelector {
         try {
             select_action = Integer.parseInt(args[1].trim());
         } catch (Exception e) {
-            select_action = 3;
+            select_action = 4;
         }
 
         Sicilia_gestione sg = new Sicilia_gestione(testing);
         switch (select_action) {
+            case 2 -> {
+                log.warning("GESTIONE SICILIA - FAD");
+                try {
+                    sg.fad_gestione();
+                } catch (Exception e) {
+                }
+                break;
+            }
             case 3 -> {
                 log.warning("GESTIONE SICILIA - ESTRAZIONI");
                 log.warning("GENERAZIONE FILE REPORT... INIZIO");
@@ -72,6 +81,13 @@ public class MainSelector {
 
                 }
                 log.warning("GENERAZIONE FILE REPORT... FINE");
+            }
+            case 4 -> {
+                log.warning("GESTIONE SICILIA - REPORT FAD");
+                crearegistri(testing);
+                log.warning("GESTIONE SICILIA - UPDATE ORE CONVALIDATE");
+                sg.ore_convalidateAllievi();
+                break;
             }
             case 5 -> {
                 log.warning("ACCREDITAMENTO SICILIA");

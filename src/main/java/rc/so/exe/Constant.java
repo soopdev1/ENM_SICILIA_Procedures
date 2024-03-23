@@ -175,7 +175,7 @@ public class Constant {
             return Logger.getLogger(Constant.class.getName());
         }
     }
-    
+
     public static String estraiEccezione(Exception ec1) {
         try {
             String stack_nam = ec1.getStackTrace()[0].getMethodName();
@@ -328,19 +328,6 @@ public class Constant {
     }
 
     public static long getTimeDiff() {
-        try {
-            TimeZone tz1 = TimeZone.getTimeZone("Europe/Rome");
-            TimeZone tz2 = TimeZone.getTimeZone("GMT");
-            TimeZone tz3 = TimeZone.getTimeZone("GMT+1");
-            ZoneId arrivingZone = ZoneId.of("Europe/Rome");
-            ZonedDateTime arrival = Instant.now().atZone(arrivingZone);
-            if (arrivingZone.getRules().isDaylightSavings(arrival.toInstant())) {
-                return tz1.getRawOffset() - tz2.getRawOffset() + tz1.getDSTSavings() - tz2.getDSTSavings();
-            } else {
-                return tz1.getRawOffset() - tz3.getRawOffset() + tz1.getDSTSavings() - tz3.getDSTSavings();
-            }
-        } catch (Exception e) {
-        }
         return 0L;
     }
 
@@ -474,15 +461,16 @@ public class Constant {
         return null;
     }
 
-    private static final long MAX = 18000000;
+    public static final long MAX = 18000000;
 
     public static long convertHours(String ore) {
         try {
             double d1 = Double.parseDouble(ore);
             long tot = Math.round(d1) * 3600000;
-            return tot;
+            if (tot < MAX) {
+                return tot;
+            }
         } catch (Exception e) {
-
         }
         return MAX;
     }
@@ -687,7 +675,7 @@ public class Constant {
         }
     }
 
-    public static int getIdUser(Db_Accreditamento db, String nome, String cognome, int idpr, int idsa, String ruolo) {
+    public static int getIdUser(Db_Gest db, String nome, String cognome, int idpr, int idsa, String ruolo) {
         if (ruolo.equalsIgnoreCase("DOCENTE")) {
             return getIdDocente(db, nome, cognome, idsa);
         } else if (ruolo.equalsIgnoreCase("ALLIEVO")) {
@@ -696,7 +684,7 @@ public class Constant {
         return 0;
     }
 
-    private static int getIdAllievo(Db_Accreditamento db, String nome, String cognome, int idpr) {
+    private static int getIdAllievo(Db_Gest db, String nome, String cognome, int idpr) {
         try {
             String sql = "SELECT idallievi FROM allievi WHERE nome = ? AND cognome = ? AND idprogetti_formativi = ? AND id_statopartecipazione = ? ORDER BY idallievi DESC LIMIT 1";
             try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -715,7 +703,7 @@ public class Constant {
         return 0;
     }
 
-    private static int getIdDocente(Db_Accreditamento db, String nome, String cognome, int idsa) {
+    private static int getIdDocente(Db_Gest db, String nome, String cognome, int idsa) {
         try {
             String sql = "SELECT iddocenti FROM docenti WHERE nome = ? AND cognome = ? AND idsoggetti_attuatori = ? AND stato = ? ORDER BY iddocenti DESC LIMIT 1";
             try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
@@ -930,5 +918,4 @@ public class Constant {
             return false;
         }
     }
-
 }

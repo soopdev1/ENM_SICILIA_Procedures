@@ -914,7 +914,7 @@ int idpr = rs0.getInt("a.idprogetti_formativi");
 
             Db_Gest db1 = new Db_Gest(this.host);
 
-            String sql0 = "SELECT s.ragionesociale,s.piva,s.protocollo,d.nome,d.cognome,d.codicefiscale,d.stato,d.tipo_inserimento,d.datawebinair,d.motivo,d.fascia FROM docenti d, soggetti_attuatori s WHERE d.idsoggetti_attuatori=s.idsoggetti_attuatori";
+            String sql0 = "SELECT s.ragionesociale,s.piva,s.protocollo,d.nome,d.cognome,d.codicefiscale,d.stato,d.tipo_inserimento,d.datawebinair,d.motivo,d.fascia,d.email FROM docenti d, soggetti_attuatori s WHERE d.idsoggetti_attuatori=s.idsoggetti_attuatori";
 
             try (OutputStream outputStream = new FileOutputStream(new File(fileout)); XSSFWorkbook wb = new XSSFWorkbook(new FileInputStream(new File(fileing)))) {
 
@@ -966,6 +966,7 @@ int idpr = rs0.getInt("a.idprogetti_formativi");
                         setCell(getCell(row, indicecolonna.addAndGet(1)), rs0.getString("d.nome").toUpperCase());
                         setCell(getCell(row, indicecolonna.addAndGet(1)), rs0.getString("d.cognome").toUpperCase());
                         setCell(getCell(row, indicecolonna.addAndGet(1)), rs0.getString("d.codicefiscale").toUpperCase());
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), rs0.getString("d.email").toLowerCase());
                         setCell(getCell(row, indicecolonna.addAndGet(1)), fasciaproposta);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), rs0.getString("d.fascia").toUpperCase());
                         setCell(getCell(row, indicecolonna.addAndGet(1)), rs0.getDate("d.datawebinair") == null ? "" : sdfITA.format(rs0.getDate("d.datawebinair")));
