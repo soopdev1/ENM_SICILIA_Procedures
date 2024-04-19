@@ -67,7 +67,7 @@ public class MainSelector {
                 log.warning("GESTIONE SICILIA - ESTRAZIONI");
                 log.warning("GENERAZIONE FILE REPORT... INIZIO");
                 try {
-                        sg.report_docenti();
+                    sg.report_docenti();
                 } catch (Exception e) {
                 }
                 try {
@@ -87,6 +87,7 @@ public class MainSelector {
                 crearegistri(testing);
                 log.warning("GESTIONE SICILIA - UPDATE ORE CONVALIDATE");
                 sg.ore_convalidateAllievi();
+                sg.ore_ud();
                 break;
             }
             case 5 -> {
@@ -132,78 +133,22 @@ public class MainSelector {
                     log.severe(estraiEccezione(e));
                 }
             }
-            default ->
-                log.severe("GESTIONE SICILIA - NESSUN METODO SELEZIONATO");
-
-        }
-//                case 0:
-//                    log.severe("GESTIONE NEET - NESSUN METODO SELEZIONATO");
-//                    break;
-//                case 1:
-//                    log.warning("GESTIONE NEET - COMUNICAZIONI");
-//                    try {
-//                        log.warning("MAIL REMIND 1 GIORNO... INIZIO");
-//                        ne.mail_remind(1);
-//                        log.warning("MAIL REMIND 1 GIORNO... FINE");
-//                    } catch (Exception e) {
-//                    }
-//                    try {
-//                        log.warning("MAIL REMIND QUESTIONARI INGRESSO... INIZIO");
-//                        ne.mail_questionario_INGRESSO();
-//                        log.warning("MAIL REMIND QUESTIONARI INGRESSO... FINE");
-//                    } catch (Exception e) {
-//                    }
-//                    try {
-//                        log.warning("MAIL REMIND QUESTIONARI USCITA... INIZIO");
-//                        ne.mail_questionario_USCITA();
-//                        log.warning("MAIL REMIND QUESTIONARI USCITA... FINE");
-//                    } catch (Exception e) {
-//                    }
-//                    break;
-//                case 2:
-//                    log.warning("GESTIONE NEET - FAD");
-//                    try {
-//                        ne.fad_gestione();
-//                    } catch (Exception e) {
-//                    }
-//                    break;
-//                case 4:
-//                    log.warning("GESTIONE NEET - REPORT FAD");
-//                    Create.crea(true, testing);
-//                    break;
-//                case 6:
-//                    log.warning("REPAIR NEET");
-//                    Repair neetr = new Repair(testing, true);
-//
-//                    try {
-//                        neetr.imposta_progetti_finettivita();
-//                    } catch (Exception e) {
-//                    }
-//
-//                    try {
-//                        neetr.impostaritiratounder36oreA();
-//                    } catch (Exception e) {
-//
-//                    }
-//
-//                    try {
-//                        neetr.copiadocumentidocenti();
-//                    } catch (Exception e) {
-//
-//                    }
-//                    try {
-//                        neetr.crea_pdf_unico_ANPAL(true);
-//                    } catch (Exception e) {
-//
-//                    }
-//                    break;
-//                case 7: 
-//                    try {
-//                    log.info("START RENDICONTAZIONE NEET");
-//                    new Rendicontazione(false, true).generaRendicontazione(true);
-//                    log.info("END RENDICONTAZIONE NEET");
+            case 6 -> { //MAINTENANCE
+//                try {
+//                    log.info("START RITIRA UNDER 48 ORE FASE A");
+//                    sg.impostaritiratounder48oreA();
+//                    log.info("FINE RITIRA UNDER 48 ORE FASE A");
 //                } catch (Exception e) {
 //                }
-//                break;
+                try {
+                    log.info("START IMPOSTA FINE ATTIVITA'");
+                    sg.imposta_fineattivita();
+                    log.info("FINE IMPOSTA FINE ATTIVITA'");
+                } catch (Exception e) {
+                }
+            }
+            default ->
+                log.severe("GESTIONE SICILIA - NESSUN METODO SELEZIONATO");
+        }
     }
 }

@@ -552,7 +552,7 @@ public class Db_Gest {
     public List<Utenti> list_Allievi_noAccento(int idpr) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idpr;
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione IN ('10','12','13','14','15','18','19') AND idprogetti_formativi = " + idpr;
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
                     Utenti u = new Utenti(rs.getInt("idallievi"),
@@ -572,7 +572,7 @@ public class Db_Gest {
     public List<Utenti> list_Allievi_noAccento(int idpr, int gruppo) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idpr + " AND gruppo_faseB = " + gruppo;
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione IN ('10','12','13','14','15','18','19') AND idprogetti_formativi = " + idpr + " AND gruppo_faseB = " + gruppo;
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
                     Utenti u = new Utenti(rs.getInt("idallievi"),
@@ -592,7 +592,7 @@ public class Db_Gest {
     public List<Utenti> list_Allievi(int idpr) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idpr;
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email FROM allievi WHERE id_statopartecipazione IN ('10','12','13','14','15','18','19') AND idprogetti_formativi = " + idpr;
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
                     Utenti u = new Utenti(rs.getInt("idallievi"),
@@ -693,7 +693,7 @@ public class Db_Gest {
     public int get_allievi_accreditati(int idpr) {
         int out = 0;
         try {
-            String sql = "SELECT COUNT(a.idallievi) FROM allievi a WHERE a.id_statopartecipazione IN ('13','14','15','18','19') AND a.idprogetti_formativi=" + idpr;
+            String sql = "SELECT COUNT(a.idallievi) FROM allievi a WHERE a.id_statopartecipazione IN ('10','12','13','14','15','18','19') AND a.idprogetti_formativi=" + idpr;
             try (Statement st1 = this.c.createStatement(); ResultSet rs = st1.executeQuery(sql)) {
                 if (rs.next()) {
                     out = rs.getInt(1);
@@ -725,22 +725,46 @@ public class Db_Gest {
     
     public boolean insert_UD_presenza (String completa,String datafine,String datainizio,String fase,String orepresenze,String oretotali,String ud,String idallievi){        
         try {
-            String ins = "INSERT INTO presenzeudallievi (completa,datafine,datainizio,fase,orepresenze,oretotali,ud,idallievi) VALUES (?,?,?,?,?,?,?,?)";
-            try (PreparedStatement ps = this.c.prepareStatement(ins, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-                ps.setString(1, completa);
-                ps.setString(2, datafine);
-                ps.setString(3, datainizio);
-                ps.setString(4, fase);
-                ps.setString(5, orepresenze);
-                ps.setString(6, oretotali);
-                ps.setString(7, ud);
-                ps.setString(8, idallievi);
-                ps.execute();
-                return true;
+            String s1 = "SELECT * FROM presenzeudallievi p WHERE p.idallievi = ? AND p.ud = ?";
+            try (PreparedStatement ps1 = this.c.prepareStatement(s1, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+                ps1.setString(1, idallievi);
+                ps1.setString(2, ud);
+                try (ResultSet rs1 = ps1.executeQuery()) {
+                    if (rs1.next()) {
+                        String upd = "UPDATE presenzeudallievi SET completa = ?, datafine = ?, datainizio = ?, fase = ? ,orepresenze  = ?, oretotali = ? WHERE ud  = ? AND idallievi = ?";
+                        try (PreparedStatement ps = this.c.prepareStatement(upd, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+                            ps.setString(1, completa);
+                            ps.setString(2, datafine);
+                            ps.setString(3, datainizio);
+                            ps.setString(4, fase);
+                            ps.setString(5, orepresenze);
+                            ps.setString(6, oretotali);
+                            ps.setString(7, ud);
+                            ps.setString(8, idallievi);
+                            ps.executeUpdate();
+                            return true;
+                        }
+                    } else {
+                        String ins = "INSERT INTO presenzeudallievi (completa,datafine,datainizio,fase,orepresenze,oretotali,ud,idallievi) VALUES (?,?,?,?,?,?,?,?)";
+                        try (PreparedStatement ps = this.c.prepareStatement(ins, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+                            ps.setString(1, completa);
+                            ps.setString(2, datafine);
+                            ps.setString(3, datainizio);
+                            ps.setString(4, fase);
+                            ps.setString(5, orepresenze);
+                            ps.setString(6, oretotali);
+                            ps.setString(7, ud);
+                            ps.setString(8, idallievi);
+                            ps.execute();
+                            return true;
+                        }
+                    }
+                }
             }
+
         } catch (Exception ex) {
             ex.printStackTrace();
-//            insertTracking("ERROR SYSTEM", estraiEccezione(ex));
+            insertTracking("ERROR SYSTEM", estraiEccezione(ex));
         }
         return false;
     }

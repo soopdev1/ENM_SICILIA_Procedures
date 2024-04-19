@@ -28,6 +28,8 @@ import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.joda.time.DateTime;
+import org.joda.time.Period;
+import org.joda.time.PeriodType;
 import org.joda.time.format.DateTimeFormat;
 import static org.joda.time.format.DateTimeFormat.forPattern;
 import org.joda.time.format.DateTimeFormatter;
@@ -240,4 +242,16 @@ public class Utils {
         }
         return "";
     }
+    
+    public static long calcolaintervallomillis(String orastart, String oraend) {
+        try {
+            DateTime st_data1 = new DateTime(2000, 1, 1, Integer.parseInt(orastart.split(":")[0]), Integer.parseInt(orastart.split(":")[1]));
+            DateTime st_data2 = new DateTime(2000, 1, 1, Integer.parseInt(oraend.split(":")[0]), Integer.parseInt(oraend.split(":")[1]));
+            Period p = new Period(st_data1, st_data2, PeriodType.millis());
+            return p.getValue(0);
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+    
 }

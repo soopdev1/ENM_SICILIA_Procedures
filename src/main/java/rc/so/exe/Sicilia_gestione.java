@@ -5,15 +5,18 @@
  */
 package rc.so.exe;
 
+import com.google.common.base.Splitter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -37,6 +40,7 @@ import static rc.so.exe.Utils.getRow;
 import static rc.so.exe.Utils.patternITA;
 import static rc.so.exe.Utils.patternSql;
 import static rc.so.exe.Utils.sdfITA;
+import static rc.so.exe.Utils.sdfSQL;
 import static rc.so.exe.Utils.timestamp;
 
 public class Sicilia_gestione {
@@ -60,14 +64,14 @@ public class Sicilia_gestione {
     public List<String> ore_convalidateAllievi() {
         List<String> report = new ArrayList<>();
         Db_Gest db1 = new Db_Gest(this.host);
-        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione='15'";
+        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,18,19)";
         try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
             while (rs1.next()) {
                 int idallievi = rs1.getInt(1);
                 String sql2 = "SELECT r.totaleorerendicontabili,r.fase FROM registro_completo r WHERE r.idutente='"
                         + idallievi + "' AND r.ruolo='ALLIEVO'";
                 String sql3 = "SELECT a.durataconvalidata FROM presenzelezioniallievi a WHERE a.idallievi = '"
-                        + idallievi + "' AND a.convalidata=1";
+                        + idallievi + "' AND a.convalidata=1 AND a.durataconvalidata > 0";
 //                String sql3 = "SELECT p.durataconvalidata,z.codice_ud FROM presenzelezioniallievi p, presenzelezioni l, lezione_calendario z "
 //                        + "WHERE p.idallievi = '" + idallievi + "' AND p.convalidata=1 AND l.idpresenzelezioni=p.idpresenzelezioni "
 //                        + "AND l.idlezioneriferimento=z.id_lezionecalendario ";
@@ -92,16 +96,11 @@ public class Sicilia_gestione {
 
                 double res = presenze / 3600000.00;
 
-                String upd4 = "UPDATE allievi SET importo = '" + res + "' WHERE idallievi='" + idallievi + "'";
+                String upd4 = "UPDATE allievi SET importo = '" + res + "', orec_totali = '" + res + "' WHERE idallievi='" + idallievi + "'";
 
                 try (Statement st4 = db1.getConnection().createStatement()) {
                     st4.executeUpdate(upd4);
                 }
-
-                System.out.println(sql1);
-                System.out.println(sql2);
-                System.out.println(sql3);
-                System.out.println(upd4);
 
             }
 
@@ -223,10 +222,10 @@ public class Sicilia_gestione {
                     String ud = rs1.getString("ud.codice");
                     String sql3;
                     if (fase.endsWith("A")) {
-                        sql3 = "SELECT idallievi,email,nome,cognome,codicefiscale FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idprogetti_formativi;
+                        sql3 = "SELECT idallievi,email,nome,cognome,codicefiscale FROM allievi WHERE id_statopartecipazione IN (10,12,13,14,15,18,19) AND idprogetti_formativi = " + idprogetti_formativi;
                     } else if (fase.endsWith("B")) {
                         int gruppo_faseB = rs1.getInt("lm.gruppo_faseB");
-                        sql3 = "SELECT idallievi,email,nome,cognome,codicefiscale FROM allievi WHERE id_statopartecipazione='15' AND idprogetti_formativi = " + idprogetti_formativi + " AND gruppo_faseB = " + gruppo_faseB;
+                        sql3 = "SELECT idallievi,email,nome,cognome,codicefiscale FROM allievi WHERE id_statopartecipazione IN (10,12,13,14,15,18,19) AND idprogetti_formativi = " + idprogetti_formativi + " AND gruppo_faseB = " + gruppo_faseB;
                     } else {
                         continue;
                     }
@@ -618,6 +617,8 @@ public class Sicilia_gestione {
 
     //REPORT
     private static final String formatdataCell = "#.0";
+    private static final String formatdataCellINT = "##";
+    private static final String formatdataCellCUR = "€#,##0.00";
 
     // da completare
     public void report_allievi() {
@@ -633,6 +634,11 @@ public class Sicilia_gestione {
 
                 XSSFCellStyle cellStyle = wb.createCellStyle();
                 cellStyle.setDataFormat(wb.createDataFormat().getFormat(formatdataCell));
+                XSSFCellStyle cellStyleINT = wb.createCellStyle();
+                cellStyleINT.setDataFormat(wb.createDataFormat().getFormat(formatdataCellINT));
+                XSSFCellStyle cellStyleCUR = wb.createCellStyle();
+                cellStyleCUR.setDataFormat(wb.createDataFormat().getFormat(formatdataCellCUR));
+
                 HashMap<Integer, String> lista_istat = new HashMap<>();
                 XSSFSheet sh1 = wb.getSheetAt(0);
                 AtomicInteger maxrow = new AtomicInteger(1);
@@ -640,7 +646,7 @@ public class Sicilia_gestione {
                 try (Statement st0 = db1.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
                     while (rs0.next()) {
                         int idallievo = rs0.getInt("a.idallievi");
-int idpr = rs0.getInt("a.idprogetti_formativi");
+                        int idpr = rs0.getInt("a.idprogetti_formativi");
                         int idsa = rs0.getInt("a.idsoggetto_attuatore");
                         String sa = "";
 
@@ -768,10 +774,10 @@ int idpr = rs0.getInt("a.idprogetti_formativi");
                         String statopr = "";
                         String dataavvio = "";
                         String datachiusura = "";
-                        String assegnazione = "";
+//                        String assegnazione = "";
                         String sql10 = "SELECT p.cip,p.start,p.END,s.descrizione,p.assegnazione FROM progetti_formativi p, stati_progetto s WHERE p.stato=s.idstati_progetto AND idprogetti_formativi=" + idpr;
 
-                        try ( ResultSet rs10 = db1.getConnection().createStatement().executeQuery(sql10)) {
+                        try (ResultSet rs10 = db1.getConnection().createStatement().executeQuery(sql10)) {
                             if (rs10.next()) {
                                 if (rs10.getString(1) != null) {
                                     cip = rs10.getString(1).toUpperCase();
@@ -787,12 +793,12 @@ int idpr = rs0.getInt("a.idprogetti_formativi");
                                 if (rs10.getString(4) != null) {
                                     statopr = rs10.getString(4).toUpperCase();
                                 }
-                                if (rs10.getString(5) != null) {
-                                    assegnazione = rs10.getString(5).toUpperCase();
-                                }
+//                                if (rs10.getString(5) != null) {
+//                                    assegnazione = rs10.getString(5).toUpperCase();
+//                                }
                             }
                         }
-                        
+
                         String domiciliouguale = "NO";
 
                         try {
@@ -881,7 +887,11 @@ int idpr = rs0.getInt("a.idprogetti_formativi");
                         setCell(getCell(row, indicecolonna.addAndGet(1)), statopr);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), dataavvio);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), datachiusura);
-                        //MANCA FREQUENZA E MODELLO 5
+
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), cellStyle, rs0.getString("a.orec_totali") == null ? "0.0" : rs0.getString("a.orec_totali").trim(), false, true);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), cellStyle, rs0.getString("a.orec_fasea") == null ? "0.0" : rs0.getString("a.orec_fasea").trim(), false, true);
+
+                        //MANCA MODELLO 5
                         maxrow.set(indicecolonna.get());
                     }
                 }
@@ -1244,4 +1254,302 @@ int idpr = rs0.getInt("a.idprogetti_formativi");
 
     }
 
+    public void impostaritiratounder48oreA() {
+        try {
+
+            Db_Gest db1 = new Db_Gest(this.host);
+
+            String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.idprogetti_formativi IS NOT NULL AND a.id_statopartecipazione IN ('10','12','13','14','15','18','19') "
+                    + "AND a.idprogetti_formativi IN(SELECT p.idprogetti_formativi FROM progetti_formativi p "
+                    + "WHERE p.stato IN (SELECT s.idstati_progetto FROM stati_progetto s "
+                    + "WHERE s.ordine_processo IS NOT NULL AND s.ordine_processo>4)) AND a.importo < 48";
+
+            try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
+                while (rs1.next()) {
+                    long idallievi = rs1.getLong(1);
+                    String upd1 = "UPDATE allievi SET id_statopartecipazione='11' WHERE idallievi=" + idallievi;
+                    try (Statement st3 = db1.getConnection().createStatement()) {
+                        st3.executeUpdate(upd1);
+                    }
+                }
+            }
+
+            db1.closeDB();
+
+        } catch (Exception e) {
+            log.severe(estraiEccezione(e));
+        }
+    }
+
+    public void ore_ud() {
+        Db_Gest db0 = new Db_Gest(this.host);
+
+        List<Long> idallievi = new ArrayList<>();
+        String sql = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,18,19)";
+        try (Statement st = db0.getConnection().createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                idallievi.add(rs.getLong(1));
+            }
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+        }
+
+        //SALVA UD
+        String sql0 = "SELECT u.descrizione,u.fase FROM unita_didattiche u GROUP BY u.descrizione,u.fase ORDER BY ordine;";
+        try (Statement st0 = db0.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
+            while (rs0.next()) {
+                String UD_desc = rs0.getString(1);
+                String UD_fase = rs0.getString(2);
+                String sql1 = "SELECT u.codice,u.ore FROM unita_didattiche u WHERE u.descrizione = '" + UD_desc + "' AND u.fase = '" + UD_fase + "'";
+                Map<String, String> MOD_ore = new HashMap<>();
+                List<String> MOD_codici = new ArrayList<>();
+                int ore = 0;
+                try (Statement st1 = db0.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
+                    while (rs1.next()) {
+                        MOD_ore.put(rs1.getString(1), rs1.getString(2));
+                        MOD_codici.add(rs1.getString(1));
+                        ore += rs1.getInt(2);
+                    }
+                }
+//                if (MOD_codici.size() == 4 && MOD_codici.get(0).startsWith("A")) {
+//                    String ud11_1 = "A-11A_A-11B";
+//                    String ud11_2 = "A-11B_A-11C";
+//                    String ud11_3 = "A-11C_A-11D";
+//                    MOD_codici.add(ud11_1);
+//                    MOD_codici.add(ud11_2);
+//                    MOD_codici.add(ud11_3);
+//                    MOD_ore.put(ud11_1, "5");
+//                    MOD_ore.put(ud11_2, "5");
+//                    MOD_ore.put(ud11_3, "5");
+//                } else if (MOD_codici.size() == 4 && MOD_codici.get(0).startsWith("B")) {
+//                    String ud11_1 = "B-1A_B-1B";
+//                    String ud11_2 = "B-1B_B-1C";
+//                    String ud11_3 = "B-1C_B-1D";
+//                    MOD_codici.add(ud11_1);
+//                    MOD_codici.add(ud11_2);
+//                    MOD_codici.add(ud11_3);
+//                    MOD_ore.put(ud11_1, "5");
+//                    MOD_ore.put(ud11_2, "5");
+//                    MOD_ore.put(ud11_3, "5");
+//                }
+                String nomemodulo = "";
+                for (String m1 : MOD_codici) {
+                    nomemodulo += m1 + "_";
+                }
+                nomemodulo = StringUtils.chop(nomemodulo);
+
+                for (Long idallievo : idallievi) {
+
+                    String sql2_F0 = "SELECT r.totaleorerendicontabili,r.data FROM registro_completo r WHERE r.idutente=" + idallievo
+                            + " AND r.ruolo='ALLIEVO' AND r.nud='" + nomemodulo + "'";
+
+                    String datainizio;
+                    String datafine;
+                    try (Statement st2F0 = db0.getConnection().createStatement(); ResultSet rs2F0 = st2F0.executeQuery(sql2_F0)) {
+                        if (rs2F0.next()) {
+                            //FAD 2 MODULI IN UNO
+                            double res = rs2F0.getLong(1) / 3600000.00;
+                            datainizio = sdfSQL.format(rs2F0.getDate(2));
+                            datafine = sdfSQL.format(rs2F0.getDate(2));
+
+                            db0.insert_UD_presenza(String.valueOf(Double.compare(Double.parseDouble(String.valueOf(ore)), res)),
+                                    datafine, datainizio, nomemodulo.split("-")[0], String.valueOf(res), String.valueOf(ore), nomemodulo, String.valueOf(idallievo));
+                            //System.out.println(idallievo+" : "+nomemodulo + " - " + ore + " : " + res + " - " + datainizio + " - " + datafine + " -- " + nomemodulo.split("-")[0]);
+                        } else {
+
+                            for (String m1 : MOD_codici) {
+                                String sql2_F1 = "SELECT r.totaleorerendicontabili,r.data FROM registro_completo r WHERE r.idutente=" + idallievo
+                                        + " AND r.ruolo='ALLIEVO' AND r.nud='" + m1 + "'";
+//                            System.out.println(sql2_F1);
+                                try (Statement st2F1 = db0.getConnection().createStatement(); ResultSet rs2F1 = st2F1.executeQuery(sql2_F1)) {
+                                    if (rs2F1.next()) {
+                                        //FAD 2 MODULI SINGOLI
+                                        double res = rs2F1.getLong(1) / 3600000.00;
+                                        datainizio = sdfSQL.format(rs2F1.getDate(2));
+                                        datafine = sdfSQL.format(rs2F1.getDate(2));
+                                        db0.insert_UD_presenza(String.valueOf(Double.compare(Double.parseDouble(String.valueOf(MOD_ore.get(m1))), res)),
+                                                datafine, datainizio, m1.split("-")[0], String.valueOf(res), String.valueOf(MOD_ore.get(m1)), m1, String.valueOf(idallievo));
+//                                        System.out.println(idallievo+" : "+idallievo+" : "+m1 + " - " + MOD_ore.get(m1) + " : " + res + " - " + datainizio + " - " + datafine + " -- " + m1.split("-")[0]);
+                                    } else {
+                                        String sql2_P = "SELECT r.durataconvalidata,p.datalezione FROM presenzelezioni p, presenzelezioniallievi r, lezioni_modelli l , lezione_calendario lc "
+                                                + "WHERE p.idpresenzelezioni=r.idpresenzelezioni AND l.id_lezionimodelli=p.idlezioneriferimento AND l.id_lezionecalendario=lc.id_lezionecalendario "
+                                                + "AND r.idallievi=" + idallievo + " AND r.convalidata=1 AND lc.codice_ud='" + m1 + "' AND r.durataconvalidata > 0";
+                                        try (Statement st2P = db0.getConnection().createStatement(); ResultSet rs2P = st2P.executeQuery(sql2_P)) {
+                                            if (rs2P.next()) {
+                                                //PRESENZA MODULI SINGOLI
+                                                double res = rs2P.getLong(1) / 3600000.00;
+                                                datainizio = sdfSQL.format(rs2P.getDate(2));
+                                                datafine = sdfSQL.format(rs2P.getDate(2));
+                                                db0.insert_UD_presenza((Double.compare(Double.parseDouble(String.valueOf(MOD_ore.get(m1))), res) == 0) ? "1" : "0",
+                                                        datafine, datainizio, m1.split("-")[0], String.valueOf(res), String.valueOf(MOD_ore.get(m1)), m1, String.valueOf(idallievo));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+        }
+        //UD
+        List<UD> elencoud = new ArrayList<>();
+        String sql3A = "SELECT descrizione,sum(ore),fase,GROUP_CONCAT(codice SEPARATOR ';') AS moduli FROM unita_didattiche GROUP BY descrizione,fase ORDER BY fase,ordine";
+        try (Statement st3A = db0.getConnection().createStatement(); ResultSet rs3A = st3A.executeQuery(sql3A)) {
+            while (rs3A.next()) {
+                elencoud.add(new UD(rs3A.getString(1), rs3A.getDouble(2), rs3A.getString(3), rs3A.getString(4)));
+            }
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+        }
+        for (Long idallievo : idallievi) {
+////            ORE
+            String sql3 = "SELECT SUM(p.orepresenze),p.fase FROM presenzeudallievi p WHERE p.idallievi=" + idallievo + " GROUP BY p.fase";
+            try (Statement st3 = db0.getConnection().createStatement(); ResultSet rs3 = st3.executeQuery(sql3)) {
+                while (rs3.next()) {
+                    String upd3 = "UPDATE allievi SET orec_fase" + rs3.getString(2).toLowerCase() + " = '" + rs3.getDouble(1) + "' WHERE idallievi = " + idallievo;
+                    try (Statement st3A = db0.getConnection().createStatement()) {
+                        boolean es = st3A.executeUpdate(upd3) > 0;
+                        log.log(Level.WARNING, "{0} ) {1} -- {2} : {3}", new Object[]{idallievo, rs3.getString(2), rs3.getDouble(1), es});
+                    }
+                }
+            } catch (Exception ex1) {
+                log.severe(estraiEccezione(ex1));
+            }
+////            UNITA DIDATTICHE
+            int ud_ok_A = 0;
+            int ud_ok_B = 0;
+
+            for (UD unit : elencoud) {
+
+                double oreallievo = 0.0;
+
+                String sql4 = "SELECT * FROM presenzeudallievi p WHERE p.idallievi=" + idallievo + " AND (";
+                List<String> moduli = Splitter.on(";").splitToList(unit.getModuli());
+
+                for (String m1 : moduli) {
+                    sql4 += " ud LIKE '%" + m1 + "%' OR";
+                }
+
+                sql4 = StringUtils.substring(sql4, 0, sql4.length() - 2).trim() + ")";
+//                    System.out.println(sql4);
+                try (Statement st4 = db0.getConnection().createStatement(); ResultSet rs4 = st4.executeQuery(sql4)) {
+                    while (rs4.next()) {
+                        oreallievo += rs4.getDouble("orepresenze");
+                    }
+                } catch (Exception ex2) {
+                    log.severe(estraiEccezione(ex2));
+                }
+                if (unit.getOre() == oreallievo) {
+                    if (unit.getFase().endsWith("A")) {
+                        ud_ok_A++;
+                    } else if (unit.getFase().endsWith("B")) {
+                        ud_ok_B++;
+                    }
+                }
+            }
+
+            String upd4 = "UPDATE allievi SET ud_ok_A = ?, ud_ok_B = ? WHERE idallievi = ?";
+
+            try (PreparedStatement ps4 = db0.getConnection().prepareStatement(upd4)) {
+                ps4.setInt(1, ud_ok_A);
+                ps4.setInt(2, ud_ok_B);
+                ps4.setLong(3, idallievo);
+                boolean es = ps4.executeUpdate() > 0;
+                log.log(Level.WARNING, "{0} - {1}", new Object[]{ps4.toString(), es});
+            } catch (Exception ex3) {
+                log.severe(estraiEccezione(ex3));
+            }
+
+            //ASSENZE
+            int assenzeOK = 0;
+            String sql5 = "SELECT p.datarealelezione,p.durataconvalidata FROM presenzelezioniallievi p "
+                    + "WHERE p.convalidata=1 AND (p.durataconvalidata=0 OR p.durataconvalidata=-1) "
+                    + "AND p.idallievi=" + idallievo + " GROUP BY LEFT(p.datarealelezione,10)";
+
+            try (Statement st5 = db0.getConnection().createStatement(); ResultSet rs5 = st5.executeQuery(sql5)) {
+                while (rs5.next()) {
+                    assenzeOK++;
+                }
+            } catch (Exception ex4) {
+                log.severe(estraiEccezione(ex4));
+            }
+
+            if (assenzeOK > 0) {
+                String upd5 = "UPDATE allievi SET assenzeOK = ?, assenzeKO = ? WHERE idallievi = ?";
+                try (PreparedStatement ps5 = db0.getConnection().prepareStatement(upd5)) {
+                    ps5.setInt(1, assenzeOK);
+                    ps5.setInt(2, 0);
+                    ps5.setLong(3, idallievo);
+                    boolean es = ps5.executeUpdate() > 0;
+                    log.log(Level.WARNING, "{0} - {1}", new Object[]{ps5.toString(), es});
+                } catch (Exception ex5) {
+                    log.severe(estraiEccezione(ex5));
+                }
+            }
+
+        }
+
+        db0.closeDB();
+    }
+
+    public void imposta_fineattivita() {
+        Db_Gest db = new Db_Gest(this.host);
+        String sql0 = "SELECT p.idprogetti_formativi FROM progetti_formativi p WHERE p.stato = 'ATB' AND p.`end` < CURDATE()";
+        try (Statement st0 = db.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
+            while (rs0.next()) {
+                String idpr = rs0.getString(1);
+                String sql1 = "SELECT a.idallievi,a.gruppo_faseB,a.idprogetti_formativi FROM allievi a "
+                        + "WHERE a.id_statopartecipazione = '15' "
+                        + "AND a.idprogetti_formativi = " + idpr;
+                boolean fineattivita = true;
+                try (Statement st1 = db.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
+                    while (rs1.next()) {
+                        String idallievi = rs1.getString(1);
+                        String gruppo_fb = rs1.getString(2);
+                        String sql2 = "SELECT la.convalidata,p.datalezione FROM presenzelezioniallievi la, presenzelezioni p WHERE la.idallievi=" + idallievi + " AND p.idpresenzelezioni=la.idpresenzelezioni "
+                                + "AND p.idlezioneriferimento IN (SELECT m.id_lezionimodelli FROM lezioni_modelli m WHERE m.id_modelli_progetto IN "
+                                + "(SELECT mp.id_modello FROM modelli_progetti mp WHERE mp.id_progettoformativo = " + idpr + ") AND m.gruppo_faseB IN (0," + gruppo_fb + "))";
+                        try (Statement st2 = db.getConnection().createStatement(); ResultSet rs2 = st2.executeQuery(sql2)) {
+                            while (rs2.next()) {
+                                boolean conv = rs2.getBoolean(1);
+                                if (!conv) {
+                                    log.log(Level.WARNING, "PROGETTO {0} - ALLIEVO {1} : NON ANCORA CONVALIDATA LEZIONE {2}", new Object[]{idpr, idallievi, rs2.getString(2)});
+                                    fineattivita = false;
+                                    break;
+                                }
+                            }
+                        } catch (Exception ex2) {
+                            log.severe(estraiEccezione(ex2));
+                        }
+                    }
+                } catch (Exception ex2) {
+                    log.severe(estraiEccezione(ex2));
+                }
+                if (fineattivita) {
+                    try (Statement st3 = db.getConnection().createStatement()) {
+                        String upd = "UPDATE progetti_formativi SET stato = 'F' WHERE idprogetti_formativi=" + idpr;
+                        boolean es3 = st3.executeUpdate(upd) > 0;
+                        if (es3) {
+                            log.log(Level.INFO, "PROGETTO {0} IMPOSTATO IN FINE ATTIVITA'.", idpr);
+                        }else{
+                            log.log(Level.SEVERE, "ERRORE NELL''UPDATE DEL PROGETTO {0}", idpr);
+                        }
+                    }
+                } else {
+                    log.log(Level.INFO, "PROGETTO {0} ANCORA DA VALIDARE.", idpr);
+                }
+            }
+        } catch (Exception ex1) {
+            log.severe(estraiEccezione(ex1));
+        }
+        db.closeDB();
+    }
+
+//    public static void main(String[] args) {
+//        Sicilia_gestione sg = new Sicilia_gestione(false);
+//        sg.imposta_fineattivita();
+//    }
 }
