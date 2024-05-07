@@ -9,6 +9,7 @@ import static rc.so.exe.Constant.estraiEccezione;
 //import rc.so.report.Create;
 import java.util.logging.Logger;
 import static rc.so.report.Create.crearegistri;
+import static rc.so.report.Create.solocomplessivi;
 
 /**
  *
@@ -147,6 +148,12 @@ public class MainSelector {
                 } catch (Exception e) {
                 }
             }
+            
+            case 9 -> { //SOLO REGISTRI COMPLESSIVI
+                solocomplessivi(testing);
+            }
+            
+            
             default ->
                 log.severe("GESTIONE SICILIA - NESSUN METODO SELEZIONATO");
         }

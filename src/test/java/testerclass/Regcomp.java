@@ -23,8 +23,7 @@ public class Regcomp {
         FaseB FB = new FaseB(testing);
 
         List<Integer> list_id_conclusi = new ArrayList<>();
-        list_id_conclusi.add(8);
-        list_id_conclusi.add(10);
+        list_id_conclusi.add(27);
 
         Complessivo c1 = new Complessivo(FA.getHost());
         list_id_conclusi.forEach(idpr -> {
@@ -38,12 +37,20 @@ public class Regcomp {
                 List<Lezione> fad_b = FB.calcolaegeneraregistrofaseb(idpr, c1.getHost(), false, false, false);
 
                 List<Lezione> ca = new ArrayList<>();
-                ca.addAll(pr_a);
-                ca.addAll(fad_a);
-                List<Lezione> cb = new ArrayList<>();
-                cb.addAll(pr_b);
-                cb.addAll(fad_b);
+                if (pr_a != null && !pr_a.isEmpty()) {
+                    ca.addAll(pr_a);
+                }
+                if (fad_a != null && !fad_a.isEmpty()) {
+                    ca.addAll(fad_a);
+                }
 
+                List<Lezione> cb = new ArrayList<>();
+                if (pr_b != null && !pr_b.isEmpty()) {
+                    cb.addAll(pr_b);
+                }
+                if (fad_b != null && !fad_b.isEmpty()) {
+                    cb.addAll(fad_b);
+                }
                 sort(ca, (emp1, emp2) -> emp1.getGiorno().compareTo(emp2.getGiorno()));
                 sort(cb, (emp1, emp2) -> emp1.getGiorno().compareTo(emp2.getGiorno()));
 
