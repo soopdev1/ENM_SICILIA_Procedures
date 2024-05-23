@@ -33,13 +33,13 @@ import static rc.so.exe.Sicilia_gestione.log;
  * @author rcosco
  */
 public class Create {
-    
+
     public static void solocomplessivi(boolean testing) {
         try {
-            
+
             FaseA FA = new FaseA(testing);
             FaseB FB = new FaseB(testing);
-            
+
             List<Integer> list_id_conclusi = new ArrayList<>();
 
             //COMPLESSIVO
@@ -89,9 +89,25 @@ public class Create {
                     log.severe(estraiEccezione(e1));
                 }
             });
-            
+
         } catch (Exception ex0) {
             log.severe(estraiEccezione(ex0));
+        }
+    }
+
+    private static void manage(Db_Gest db0, int idpr) {
+        try {
+            switch (idpr) {
+                case 73 -> {
+                    try (Statement st = db0.getConnection().createStatement()) {
+                        st.executeUpdate("UPDATE fad_track SET action = REPLACE(action,'D&#39;ANGELO','D''ANGELO') WHERE room LIKE '%73%' AND action LIKE '%D&#39;ANGELO%'");
+                    }
+                }
+                default -> {
+                }
+            }
+        } catch (Exception e) {
+            log.severe(estraiEccezione(e));
         }
     }
 
@@ -111,6 +127,11 @@ public class Create {
             try (Statement st0 = db0.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
                 while (rs0.next()) {
                     list_id.add(rs0.getInt(1));
+                    try {
+                        //MANAGE
+                        manage(db0, rs0.getInt(1));
+                    } catch (Exception e0) {
+                    }
                 }
             }
             db0.closeDB();
@@ -118,7 +139,6 @@ public class Create {
             FaseB FB = new FaseB(testing);
 
             list_id.forEach(idpr -> {
-
                 //  FASE A
                 try {
                     log.log(Level.INFO, "REPORT FASE A - IDPR {0}", idpr);
@@ -142,12 +162,10 @@ public class Create {
 
             });
 
-            
-
         } catch (Exception e) {
             log.severe(estraiEccezione(e));
         }
-        
+
         solocomplessivi(testing);
     }
 

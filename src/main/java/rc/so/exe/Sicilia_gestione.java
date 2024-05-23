@@ -64,7 +64,8 @@ public class Sicilia_gestione {
     public List<String> ore_convalidateAllievi() {
         List<String> report = new ArrayList<>();
         Db_Gest db1 = new Db_Gest(this.host);
-        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,18,19)";
+        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.idallievi IN (23,42)";
+//        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
         try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
             while (rs1.next()) {
                 int idallievi = rs1.getInt(1);
@@ -72,17 +73,16 @@ public class Sicilia_gestione {
                         + idallievi + "' AND r.ruolo='ALLIEVO'";
                 String sql3 = "SELECT a.durataconvalidata FROM presenzelezioniallievi a WHERE a.idallievi = '"
                         + idallievi + "' AND a.convalidata=1 AND a.durataconvalidata > 0";
-//                String sql3 = "SELECT p.durataconvalidata,z.codice_ud FROM presenzelezioniallievi p, presenzelezioni l, lezione_calendario z "
-//                        + "WHERE p.idallievi = '" + idallievi + "' AND p.convalidata=1 AND l.idpresenzelezioni=p.idpresenzelezioni "
-//                        + "AND l.idlezioneriferimento=z.id_lezionecalendario ";
-
+//                System.out.println("rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() "+sql2);
+//                System.out.println("rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() "+sql3);
                 Long presenze = 0L;
 
                 try (Statement st2 = db1.getConnection().createStatement(); ResultSet rs2 = st2.executeQuery(sql2)) {
 
                     while (rs2.next()) {
-                        report.add(idallievi + ";" + rs2.getString(2) + ";" + rs2.getLong(1));
+//                        report.add(idallievi + ";" + rs2.getString(2) + ";" + rs2.getLong(1));
                         presenze += rs2.getLong(1);
+//                        System.out.println(idallievi+" rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() "+rs2.getLong(1));
                     }
                 }
 
@@ -91,11 +91,12 @@ public class Sicilia_gestione {
                         Long conv = rs3.getString(1) == null ? 0L : rs3.getLong(1);
 //                        report.add(idallievi + ";" + StringUtils.substring(rs3.getString(2), 0, 1) + ";" + conv);
                         presenze += conv;
+//                        System.out.println(idallievi+" rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() "+conv);
                     }
                 }
 
                 double res = presenze / 3600000.00;
-
+                System.out.println(idallievi+" rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() "+res);
                 String upd4 = "UPDATE allievi SET importo = '" + res + "', orec_totali = '" + res + "' WHERE idallievi='" + idallievi + "'";
 
                 try (Statement st4 = db1.getConnection().createStatement()) {
@@ -1285,7 +1286,7 @@ public class Sicilia_gestione {
         Db_Gest db0 = new Db_Gest(this.host);
 
         List<Long> idallievi = new ArrayList<>();
-        String sql = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,18,19)";
+        String sql = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
         try (Statement st = db0.getConnection().createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 idallievi.add(rs.getLong(1));

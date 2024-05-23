@@ -23,7 +23,7 @@ public class Regcomp {
         FaseB FB = new FaseB(testing);
 
         List<Integer> list_id_conclusi = new ArrayList<>();
-        list_id_conclusi.add(27);
+        list_id_conclusi.add(112);
 
         Complessivo c1 = new Complessivo(FA.getHost());
         list_id_conclusi.forEach(idpr -> {
@@ -33,8 +33,8 @@ public class Regcomp {
                 List<Lezione> pr_a = FA.generaregistrofasea_PR(idpr, c1.getHost(), false, false, false);
                 List<Lezione> pr_b = FB.generaregistrofasea_PR(idpr, c1.getHost(), false, false, false);
 
-                List<Lezione> fad_a = FA.calcolaegeneraregistrofasea(idpr, c1.getHost(), false, false, false);
-                List<Lezione> fad_b = FB.calcolaegeneraregistrofaseb(idpr, c1.getHost(), false, false, false);
+                List<Lezione> fad_a = FA.calcolaegeneraregistrofasea(idpr, c1.getHost(), false, true, false);
+                List<Lezione> fad_b = FB.calcolaegeneraregistrofaseb(idpr, c1.getHost(), false, true, false);
 
                 List<Lezione> ca = new ArrayList<>();
                 if (pr_a != null && !pr_a.isEmpty()) {

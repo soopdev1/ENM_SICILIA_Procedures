@@ -869,7 +869,6 @@ public class FaseA {
             } else {
                 Db_Gest db1 = new Db_Gest(host);
 
-//                manage(db1, idpr);
                 String sql1 = "SELECT lc.lezione,lm.giorno,lm.orario_start,lm.orario_end,lm.id_docente,ud.codice,lc.ore,mp.id_modello FROM lezioni_modelli lm, modelli_progetti mp, lezione_calendario lc, unita_didattiche ud "
                         + " WHERE mp.id_modello=lm.id_modelli_progetto AND lc.id_lezionecalendario=lm.id_lezionecalendario AND ud.codice=lc.codice_ud "
                         + " AND lm.tipolez='F' AND mp.id_progettoformativo=" + idpr + " AND ud.fase = 'Fase A' AND lm.giorno < CURDATE() ORDER BY lc.lezione,lm.orario_start";
@@ -1245,8 +1244,12 @@ public class FaseA {
                                 }
 
                                 AtomicLong millisdurata = new AtomicLong(0);
-                                millisdurata.addAndGet(-format("2021-01-01 " + StringUtils.substring(inizio.toString(), 0, 8), timestampSQL).getMillis());
-                                millisdurata.addAndGet(format("2021-01-01 " + StringUtils.substring(fine.toString(), 0, 8), timestampSQL).getMillis());
+                                try {
+                                    millisdurata.addAndGet(-format("2021-01-01 " + StringUtils.substring(inizio.toString(), 0, 8), timestampSQL).getMillis());
+                                    millisdurata.addAndGet(format("2021-01-01 " + StringUtils.substring(fine.toString(), 0, 8), timestampSQL).getMillis());
+                                } catch (Exception e) {
+                                    millisdurata.set(0);
+                                }
                                 long duratalogindurata = (millisdurata.get());
                                 durata.set(duratalogindurata);
 
