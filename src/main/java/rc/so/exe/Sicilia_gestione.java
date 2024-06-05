@@ -64,8 +64,8 @@ public class Sicilia_gestione {
     public List<String> ore_convalidateAllievi() {
         List<String> report = new ArrayList<>();
         Db_Gest db1 = new Db_Gest(this.host);
-        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.idallievi IN (23,42)";
-//        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
+//        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.idallievi IN (23,42)";
+        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
         try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
             while (rs1.next()) {
                 int idallievi = rs1.getInt(1);

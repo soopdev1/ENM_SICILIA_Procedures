@@ -16,7 +16,7 @@ public class Aggiornaore {
 
         Sicilia_gestione sg = new Sicilia_gestione(false);
         sg.ore_convalidateAllievi();
-//        sg.ore_ud();
+        sg.ore_ud();
 
     }
 }
