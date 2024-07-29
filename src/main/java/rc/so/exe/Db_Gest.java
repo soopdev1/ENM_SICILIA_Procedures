@@ -768,4 +768,28 @@ public class Db_Gest {
         }
         return false;
     }
+    
+    
+    public List<Utenti> list_Allievi_OK(int idpr) {
+        List<Utenti> out = new ArrayList<>();
+        try {
+            String sql = "SELECT idallievi,nome,cognome,codicefiscale,email,gruppo_faseB FROM allievi WHERE idprogetti_formativi = ? AND gruppo_faseB > 0 ORDER BY cognome";
+            try (PreparedStatement ps = this.c.prepareStatement(sql)) {
+                ps.setInt(1, idpr);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Utenti u = new Utenti(rs.getInt("idallievi"),
+                                (rs.getString("cognome").toUpperCase().trim()),
+                                (rs.getString("nome").toUpperCase().trim()),
+                                rs.getString("codicefiscale").toUpperCase(), "ALLIEVO",
+                                rs.getString("email").toLowerCase(), rs.getString("gruppo_faseB"));
+                        out.add(u);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+        }
+        return out;
+    }
 }

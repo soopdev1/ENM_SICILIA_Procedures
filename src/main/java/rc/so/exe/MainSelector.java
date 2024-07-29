@@ -51,7 +51,7 @@ public class MainSelector {
         try {
             select_action = Integer.parseInt(args[1].trim());
         } catch (Exception e) {
-            select_action = 4;
+            select_action = 6;
         }
 
         Sicilia_gestione sg = new Sicilia_gestione(testing);
@@ -68,16 +68,17 @@ public class MainSelector {
                 log.warning("GESTIONE SICILIA - ESTRAZIONI");
                 log.warning("GENERAZIONE FILE REPORT... INIZIO");
                 try {
-                    sg.report_docenti();
+                    sg.report_docenti(true);
                 } catch (Exception e) {
                 }
                 try {
-                    sg.report_allievi();
+                    sg.ritira_allievi_zero();
+                    sg.report_allievi(true);
                 } catch (Exception e) {
 
                 }
                 try {
-                    sg.report_pf();
+                    sg.report_pf(true);
                 } catch (Exception e) {
 
                 }
@@ -87,8 +88,10 @@ public class MainSelector {
                 log.warning("GESTIONE SICILIA - REPORT FAD");
                 crearegistri(testing);
                 log.warning("GESTIONE SICILIA - UPDATE ORE CONVALIDATE");
-                sg.ore_convalidateAllievi();
-                sg.ore_ud();
+                sg.verifica_convalida();
+                sg.ore_convalidateAllievi(null);
+                sg.ore_ud(null);
+                sg.ritira_allievi_zero();
                 break;
             }
             case 5 -> {
@@ -144,16 +147,28 @@ public class MainSelector {
                 try {
                     log.info("START IMPOSTA FINE ATTIVITA'");
                     sg.imposta_fineattivita();
+                    sg.ritira_allievi_zero();
                     log.info("FINE IMPOSTA FINE ATTIVITA'");
+                    solocomplessivi(testing);
+
                 } catch (Exception e) {
                 }
             }
-            
+
             case 9 -> { //SOLO REGISTRI COMPLESSIVI
                 solocomplessivi(testing);
             }
-            
-            
+
+            case 10 -> { //RENDICONTAZIONE
+                try {
+                    log.info("START RENDICONTAZIONE");
+                    Rendicontazione.generaRendicontazione(false);
+                    log.info("FINE RENDICONTAZIONE");
+                } catch (Exception e) {
+                    log.severe(estraiEccezione(e));
+                }
+            }
+
             default ->
                 log.severe("GESTIONE SICILIA - NESSUN METODO SELEZIONATO");
         }

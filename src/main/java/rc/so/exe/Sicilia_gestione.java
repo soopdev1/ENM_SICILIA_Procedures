@@ -31,12 +31,14 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.joda.time.DateTime;
 import org.joda.time.Years;
+import static rc.so.exe.Constant.estraiEccezione;
 import static rc.so.exe.SendMailJet.sendMail;
+import static rc.so.exe.Utils.calcolaintervallomillis;
 import static rc.so.exe.Utils.conf;
-import static rc.so.exe.Utils.estraiEccezione;
 import static rc.so.exe.Utils.getCell;
 import static rc.so.exe.Utils.setCell;
 import static rc.so.exe.Utils.getRow;
+import static rc.so.exe.Utils.parseIntR;
 import static rc.so.exe.Utils.patternITA;
 import static rc.so.exe.Utils.patternSql;
 import static rc.so.exe.Utils.sdfITA;
@@ -61,11 +63,49 @@ public class Sicilia_gestione {
         log.log(Level.INFO, "HOST: {0}", this.host);
     }
 
-    public List<String> ore_convalidateAllievi() {
+    public void verifica_convalida() {
+        Db_Gest db = new Db_Gest(this.host);
+        String sql0 = "SELECT l.idpresenzelezioniallievi,l.durata,l.orainizio,l.orafine,l.durataconvalidata FROM presenzelezioniallievi l WHERE l.convalidata=1 AND l.durata > 0";
+        try (Statement st0 = db.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
+            while (rs0.next()) {
+                long idpresenzelezioniallievi = rs0.getLong("l.idpresenzelezioniallievi");
+                String orainizio = rs0.getString("l.orainizio");
+                String orafine = rs0.getString("l.orafine");
+                long durata = rs0.getLong("l.durata");
+                long durataconvalidata = rs0.getLong("l.durataconvalidata");
+                long check = calcolaintervallomillis(orainizio, orafine);
+                if (durata != check) {
+                    String upd1 = "UPDATE presenzelezioniallievi SET durata = '" + check + "' WHERE idpresenzelezioniallievi=" + idpresenzelezioniallievi;
+                    try (Statement st1 = db.getConnection().createStatement()) {
+                        st1.executeUpdate(upd1);
+                    }
+//                    System.out.println("A>"+idpresenzelezioniallievi + " -- (" + orainizio + "->" + orafine + ") " + durata + " () " + check + " ** " + durataconvalidata);
+                } else if (durataconvalidata > check) {
+                    String upd2 = "UPDATE presenzelezioniallievi SET durataconvalidata = '" + check + "' WHERE idpresenzelezioniallievi=" + idpresenzelezioniallievi;
+                    try (Statement st1 = db.getConnection().createStatement()) {
+                        st1.executeUpdate(upd2);
+                    }
+//                    System.out.println("B>"+idpresenzelezioniallievi + " -- (" + orainizio + "->" + orafine + ") " + durata + " () " + check + " ** " + durataconvalidata);
+                }
+            }
+        } catch (Exception ex1) {
+            log.severe(estraiEccezione(ex1));
+        }
+
+        db.closeDB();
+    }
+
+    public List<String> ore_convalidateAllievi(String sql_adhoc) {
         List<String> report = new ArrayList<>();
         Db_Gest db1 = new Db_Gest(this.host);
 //        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.idallievi IN (23,42)";
-        String sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
+        String sql1;
+        if (sql_adhoc == null) {
+            sql1 = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
+        } else {
+            sql1 = sql_adhoc;
+        }
+
         try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
             while (rs1.next()) {
                 int idallievi = rs1.getInt(1);
@@ -96,7 +136,7 @@ public class Sicilia_gestione {
                 }
 
                 double res = presenze / 3600000.00;
-                System.out.println(idallievi+" rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() "+res);
+                System.out.println(idallievi + " rc.so.exe.Sicilia_gestione.ore_convalidateAllievi() " + res);
                 String upd4 = "UPDATE allievi SET importo = '" + res + "', orec_totali = '" + res + "' WHERE idallievi='" + idallievi + "'";
 
                 try (Statement st4 = db1.getConnection().createStatement()) {
@@ -122,7 +162,7 @@ public class Sicilia_gestione {
                     + " WHERE mp.id_modello=lm.id_modelli_progetto AND lc.id_lezionecalendario=lm.id_lezionecalendario AND ud.codice=lc.codice_ud"
                     + " AND mp.id_progettoformativo=" + idprogetti_formativi
                     + " AND pf.idprogetti_formativi=mp.id_progettoformativo AND ((pf.stato='ATA' AND ud.fase='Fase A') OR (pf.stato='ATB' AND ud.fase='Fase B'))"
-                    + " AND lm.tipolez='F' AND lm.giorno = '" + dataoggi + "' ORDER BY lm.gruppo_faseB,lm.orario_start";
+                    + " AND lm.giorno = '" + dataoggi + "' ORDER BY lm.gruppo_faseB,lm.orario_start";
             try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
                 while (rs1.next()) {
                     String fase = rs1.getString("ud.fase");
@@ -322,6 +362,175 @@ public class Sicilia_gestione {
         }
         db1.closeDB();
         dbs.closeDB();
+    }
+
+    public void fad_docenti_PRESENZA(int idprogetti_formativi) {
+        Db_Gest db1 = new Db_Gest(this.host);
+
+        try {
+
+            String mailsender = db1.getPath("mailsender");
+            String dataoggi = new DateTime().toString(patternSql);
+            String datainvito = new DateTime().toString(patternITA);
+
+            String sql1 = "SELECT ud.fase,lm.gruppo_faseB,f.nomestanza,ud.codice,lm.id_docente FROM lezioni_modelli lm, modelli_progetti mp, lezione_calendario lc, unita_didattiche ud, fad_multi f, progetti_formativi pf"
+                    + " WHERE mp.id_modello=lm.id_modelli_progetto AND lc.id_lezionecalendario=lm.id_lezionecalendario AND ud.codice=lc.codice_ud"
+                    + " AND mp.id_progettoformativo = ? AND f.idprogetti_formativi=mp.id_progettoformativo AND (lm.gruppo_faseB = 0 OR lm.gruppo_faseB=f.numerocorso)"
+                    + " AND pf.idprogetti_formativi=f.idprogetti_formativi AND ((pf.stato='ATA' AND ud.fase='Fase A') OR (pf.stato='ATB' AND ud.fase='Fase B'))"
+                    + " AND lm.tipolez='P' AND lm.giorno = ? GROUP BY lm.id_docente,f.nomestanza";
+            try (PreparedStatement ps1 = db1.getConnection().prepareStatement(sql1)) {
+                ps1.setInt(1, idprogetti_formativi);
+                ps1.setString(2, dataoggi);
+                try (ResultSet rs1 = ps1.executeQuery()) {
+                    while (rs1.next()) {
+                        int id_docente = rs1.getInt("lm.id_docente");
+                        String nomestanza = rs1.getString("f.nomestanza");
+                        String ud = rs1.getString("ud.codice");
+                        String sql1A = "SELECT lm.orario_start,lm.orario_end FROM lezioni_modelli lm, modelli_progetti mp, lezione_calendario lc, unita_didattiche ud, fad_multi f"
+                                + " WHERE mp.id_modello=lm.id_modelli_progetto AND lc.id_lezionecalendario=lm.id_lezionecalendario AND ud.codice=lc.codice_ud"
+                                + " AND mp.id_progettoformativo =? AND f.idprogetti_formativi=mp.id_progettoformativo AND (lm.gruppo_faseB = 0 OR lm.gruppo_faseB=f.numerocorso) "
+                                + " AND f.nomestanza = ? AND lm.tipolez='P' AND lm.giorno = ? AND lm.id_docente = ? ORDER BY lm.orario_start";
+                        StringBuilder orainvitosb = new StringBuilder("");
+                        try (PreparedStatement ps1A = db1.getConnection().prepareStatement(sql1A)) {
+                            ps1A.setInt(1, idprogetti_formativi);
+                            ps1A.setString(2, nomestanza);
+                            ps1A.setString(3, dataoggi);
+                            ps1A.setInt(4, id_docente);
+                            try (ResultSet rs1A = ps1A.executeQuery()) {
+                                while (rs1A.next()) {
+                                    orainvitosb.append(StringUtils.substring(rs1A.getString(1), 0, 5)).append("-").append(StringUtils.substring(rs1A.getString(2), 0, 5)).append("<br>");
+                                }
+                            }
+                        }
+                        String orainvito = StringUtils.removeEnd(orainvitosb.toString(), "<br>");
+                        String sql4 = "SELECT iddocenti,email,nome,cognome,codicefiscale FROM docenti WHERE iddocenti = ?";
+                        try (PreparedStatement ps4 = db1.getConnection().prepareStatement(sql4)) {
+                            ps4.setInt(1, id_docente);
+                            try (ResultSet rs4 = ps4.executeQuery()) {
+                                if (rs4.next()) {
+                                    String nomecognome = rs4.getString("nome").toUpperCase() + " " + rs4.getString("cognome").toUpperCase();
+                                    int idsoggetto = rs4.getInt("iddocenti");
+                                    String email = rs4.getString("email").toLowerCase();
+                                    String sql5 = "SELECT user FROM fad_access WHERE type='D' AND idprogetti_formativi = ? AND idsoggetto = ? AND data = ? AND room = ?";
+                                    try (PreparedStatement ps5 = db1.getConnection().prepareStatement(sql5)) {
+                                        ps5.setInt(1, idprogetti_formativi);
+                                        ps5.setInt(2, idsoggetto);
+                                        ps5.setString(3, dataoggi);
+                                        ps5.setString(4, nomestanza);
+                                        try (ResultSet rs5 = ps5.executeQuery()) {
+                                            String user = RandomStringUtils.randomAlphabetic(8);
+                                            String psw = RandomStringUtils.randomAlphanumeric(6);
+                                            String md5psw = DigestUtils.md5Hex(psw);
+                                            if (!rs5.next()) {
+                                                //CREO CREDENZIALI
+                                                String ins = "INSERT INTO fad_access VALUES (?,?,?,?,?,?,?,?)";
+                                                try (PreparedStatement ps6 = db1.getConnection().prepareStatement(ins)) {
+                                                    ps6.setInt(1, idprogetti_formativi);
+                                                    ps6.setInt(2, idsoggetto);
+                                                    ps6.setString(3, dataoggi);
+                                                    ps6.setString(4, "D");
+                                                    ps6.setString(5, nomestanza);
+                                                    ps6.setString(6, user);
+                                                    ps6.setString(7, md5psw);
+                                                    ps6.setString(8, ud);
+                                                    ps6.execute();
+
+                                                    try {
+                                                        DbSSO dbs = new DbSSO();
+                                                        try (PreparedStatement psSSO = dbs.getConnection().prepareStatement(ins)) {
+                                                            psSSO.setInt(1, idprogetti_formativi);
+                                                            psSSO.setInt(2, idsoggetto);
+                                                            psSSO.setString(3, dataoggi);
+                                                            psSSO.setString(4, "D");
+                                                            psSSO.setString(5, nomestanza);
+                                                            psSSO.setString(6, user);
+                                                            psSSO.setString(7, md5psw);
+                                                            psSSO.setString(8, ud);
+                                                            psSSO.execute();
+                                                            log.log(Level.INFO, "SSO DOCENTE PRESENZA ) {0} : {1}", new Object[]{nomecognome, "TRUE"});
+                                                            log.log(Level.INFO, "NUOVE CREDENZIALI DOCENTE PRESENZA ) {0}", nomecognome);
+                                                        }
+                                                        dbs.closeDB();
+                                                    } catch (Exception eSSO) {
+                                                        log.severe(estraiEccezione(eSSO));
+                                                    }
+                                                }
+                                            } else { //CREDENZIALI GIA presenti
+                                                user = rs5.getString(1);
+
+                                                String upd = "UPDATE fad_access SET psw = ? WHERE idsoggetto = ? AND data = ? AND ud = ? AND type = ?";
+                                                try (PreparedStatement ps6 = db1.getConnection().prepareStatement(upd)) {
+                                                    ps6.setString(1, md5psw);
+                                                    ps6.setInt(2, idsoggetto);
+                                                    ps6.setString(3, dataoggi);
+                                                    ps6.setString(4, ud);
+                                                    ps6.setString(5, "D");
+                                                    ps6.executeUpdate();
+
+                                                    try {
+                                                        DbSSO dbs = new DbSSO();
+                                                        try (PreparedStatement psSSO = dbs.getConnection().prepareStatement(upd)) {
+                                                            psSSO.setString(1, md5psw);
+                                                            psSSO.setInt(2, idsoggetto);
+                                                            psSSO.setString(3, dataoggi);
+                                                            psSSO.setString(4, ud);
+                                                            psSSO.setString(5, "D");
+                                                            boolean es = psSSO.executeUpdate() > 0;
+                                                            log.log(Level.INFO, "SSO DOCENTE PRESENZA ) {0} : {1}", new Object[]{nomecognome, es});
+                                                            log.log(Level.INFO, "RECUPERO CREDENZIALI DOCENTE PRESENZA ) {0}", nomecognome);
+                                                        }
+                                                        dbs.closeDB();
+                                                    } catch (Exception eSSO) {
+                                                        log.severe(estraiEccezione(eSSO));
+                                                    }
+                                                }
+                                            }
+
+                                            //INVIO MAIL
+                                            String sql6 = "SELECT oggetto,testo FROM email WHERE chiave ='fad3.0_DOCENTEPR'";
+                                            try (Statement st6 = db1.getConnection().createStatement(); ResultSet rs6 = st6.executeQuery(sql6)) {
+                                                if (rs6.next()) {
+                                                    String emailtesto = rs6.getString(2);
+                                                    String emailoggetto = rs6.getString(1);
+
+                                                    String linkweb = db1.getPath("linkfad");
+                                                    String linknohttpweb = remove(linkweb, "https://");
+                                                    linknohttpweb = remove(linknohttpweb, "http://");
+                                                    linknohttpweb = removeEnd(linknohttpweb, "/");
+//
+                                                    emailtesto = StringUtils.replace(emailtesto, "@nomecognome", nomecognome);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@username", user);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@password", psw);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@datainvito", datainvito);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@orainvito", orainvito);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@nomestanza", nomestanza);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@linkweb", linkweb);
+                                                    emailtesto = StringUtils.replace(emailtesto, "@linknohttpweb", linknohttpweb);
+
+//                                                    email = "developers@smartoop.it";
+                                                    boolean es = sendMail(mailsender, new String[]{email}, new String[]{}, emailtesto, emailoggetto, db1, log);
+                                                    if (es) {
+                                                        log.log(Level.INFO, "MAIL DOCENTE PRESENZA INVIATA A : {0}", email);
+                                                    } else {
+                                                        log.log(Level.SEVERE, "MAIL DOCENTE PRESENZA ERROR {0}", email);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            //fad3.
+
+        } catch (Exception e) {
+            log.severe(estraiEccezione(e));
+        }
+
+        db1.closeDB();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -613,6 +822,13 @@ public class Sicilia_gestione {
                 log.log(Level.SEVERE, "ERRORE FAD OSPITI PF ->{0}", pf);
                 log.severe(estraiEccezione(e));
             }
+            try {
+                log.log(Level.WARNING, "FAD DOCENTI PRESENZA -> {0}", pf);
+                this.fad_docenti_PRESENZA(pf);
+            } catch (Exception e) {
+                log.log(Level.SEVERE, "ERRORE FAD DOCENTI PRESENZA PF ->{0}", pf);
+                log.severe(estraiEccezione(e));
+            }
         });
     }
 
@@ -622,7 +838,7 @@ public class Sicilia_gestione {
     private static final String formatdataCellCUR = "€#,##0.00";
 
     // da completare
-    public void report_allievi() {
+    public void report_allievi(boolean save) {
         try {
 //            List<String> presenzeconv = ore_convalidateAllievi();
             String fileing = "/mnt/mcn/yisu_sicilia/estrazioni/Report_Allievi_Sicilia.xlsx";
@@ -844,6 +1060,156 @@ public class Sicilia_gestione {
                                 "";
                         };
 
+                        String m5_grado_completezza = "";
+                        String m5_probabilita = "";
+                        String m5_forma_giuridica = "";
+                        String m5_ateco = "";
+                        String m5_sede = "";
+                        String m5_comune_localizzazione = "";
+                        String m5_provincia_localizzazione = "";
+                        String m5_regione_localizzazione = "";
+                        String m5_totale_fabbisogno = "";
+                        String m5_misura_individuata = "";
+                        String m5_misura_si_tipo = "";
+                        String m5_misura_si_nome = "";
+                        String m5_misura_si_motivazione = "";
+                        String m5_misura_no_motivazione = "";
+
+                        String sql16 = "SELECT m.m5_grado_completezza,m.m5_probabilita,m.m5_forma_giuridica,m.m5_ateco,m.m5_sede,m.m5_comune_localizzazione,m.m5_totale_fabbisogno,m.m5_misura_individuata,"
+                                + "m.m5_misura_si_tipo,m.m5_misura_no_motivazione,m.m5_misura_si_nome,m.m5_misura_si_motivazione FROM maschera_m5 m WHERE m.allievo = ? AND m.businessplan_presente = 1";
+
+                        try (PreparedStatement ps16 = db1.getConnection().prepareStatement(sql16)) {
+                            ps16.setInt(1, idallievo);
+                            try (ResultSet rs16 = ps16.executeQuery()) {
+                                if (rs16.next()) {
+                                    switch (rs16.getString("m.m5_grado_completezza")) {
+                                        case "00" ->
+                                            m5_grado_completezza = "NON ELABORATO";
+                                        case "01" ->
+                                            m5_grado_completezza = "INCOMPLETO";
+                                        case "02" ->
+                                            m5_grado_completezza = "PARIALMENTE COMPLETO";
+                                        case "03" ->
+                                            m5_grado_completezza = "ABBASTANZA COMPLETO";
+                                        case "04" ->
+                                            m5_grado_completezza = "COMPLETO";
+                                    }
+                                    switch (rs16.getString("m.m5_probabilita")) {
+                                        case "01" ->
+                                            m5_probabilita = "NESSUNA PROBABILITA'";
+                                        case "02" ->
+                                            m5_probabilita = "IMPROBABILE";
+                                        case "03" ->
+                                            m5_probabilita = "POCO PROBABILE";
+                                        case "04" ->
+                                            m5_probabilita = "PROBABILE";
+                                        case "05" ->
+                                            m5_probabilita = "MOLTO PROBABILE";
+                                        case "06" ->
+                                            m5_probabilita = "ALTAMENTE PROBABILE";
+                                    }
+
+                                    String sql16A = "SELECT * FROM formagiuridica WHERE idformagiuridica = ?";
+                                    try (PreparedStatement ps16A = db1.getConnection().prepareStatement(sql16A)) {
+                                        ps16A.setString(1, rs16.getString("m.m5_forma_giuridica"));
+                                        try (ResultSet rs16A = ps16A.executeQuery()) {
+                                            if (rs16A.next()) {
+                                                m5_forma_giuridica = rs16A.getString("descrizione").toUpperCase();
+                                            }
+                                        }
+                                    }
+                                    String sql16B = "SELECT * FROM ateco WHERE codice = ?";
+                                    try (PreparedStatement ps16B = db1.getConnection().prepareStatement(sql16B)) {
+                                        ps16B.setString(1, rs16.getString("m.m5_ateco"));
+                                        try (ResultSet rs16B = ps16B.executeQuery()) {
+                                            if (rs16B.next()) {
+                                                m5_ateco = rs16B.getString("descrizione").toUpperCase();
+                                            }
+                                        }
+                                    }
+
+                                    m5_sede = rs16.getBoolean("m.m5_sede") ? "SI" : "NO";
+                                    String sql16C = "SELECT nome,idcomune,nome_provincia,regione FROM comuni WHERE idcomune  = ?";
+                                    try (PreparedStatement ps16C = db1.getConnection().prepareStatement(sql16C)) {
+                                        ps16C.setString(1, rs16.getString("m.m5_comune_localizzazione"));
+                                        try (ResultSet rs16C = ps16C.executeQuery()) {
+                                            if (rs16C.next()) {
+                                                m5_comune_localizzazione = rs16C.getString(1).toUpperCase();
+                                                m5_provincia_localizzazione = rs16C.getString(3).toUpperCase();
+                                                m5_regione_localizzazione = rs16C.getString(4).toUpperCase();
+                                            }
+                                        }
+                                    }
+
+                                    m5_totale_fabbisogno = rs16.getString("m.m5_totale_fabbisogno").trim();
+
+                                    m5_misura_individuata = rs16.getBoolean("m.m5_misura_individuata") ? "SI" : "NO";
+
+                                    if (m5_misura_individuata.equals("SI")) {
+
+                                        m5_misura_si_nome = rs16.getString("m.m5_misura_si_nome").toUpperCase().trim();
+
+                                        switch (rs16.getString("m.m5_misura_si_tipo")) {
+                                            case "01" ->
+                                                m5_misura_si_tipo = "NAZIONALE";
+                                            case "02" ->
+                                                m5_misura_si_tipo = "CIRCOSCRIZIONALE";
+                                            case "03" ->
+                                                m5_misura_si_tipo = "REGIONALE";
+                                            case "04" ->
+                                                m5_misura_si_tipo = "CREDITO ORDINARIO";
+                                            case "05" ->
+                                                m5_misura_si_tipo = "AUTOFINANZIAMENTO, FONDI PROPRI";
+                                            case "06" ->
+                                                m5_misura_si_tipo = "MICROCREDITO TRAMITE ENM";
+                                            case "07" ->
+                                                m5_misura_si_tipo = "ALTRO";
+                                        }
+
+                                        switch (rs16.getString("m.m5_misura_si_motivazione")) {
+                                            case "01" ->
+                                                m5_misura_si_motivazione = "Possibilità di finanziamento consistente";
+                                            case "02" ->
+                                                m5_misura_si_motivazione = "Procedure più semplici";
+                                            case "03" ->
+                                                m5_misura_si_motivazione = "Criteri di selezione meno stringenti";
+                                            case "04" ->
+                                                m5_misura_si_motivazione = "Tempi di istruttoria più veloci";
+                                            case "05" ->
+                                                m5_misura_si_motivazione = "Piano di ammortamento e restituzione più conveniente";
+                                            case "06" ->
+                                                m5_misura_si_motivazione = "Minori vincoli nella gestione dei fondi";
+                                            case "07" ->
+                                                m5_misura_si_motivazione = "Presenza di quota a fondo perduto";
+                                            case "08" ->
+                                                m5_misura_si_motivazione = "Assenza di alternative";
+                                        }
+
+                                    } else {
+
+                                        switch (rs16.getString("m.m5_misura_no_motivazione")) {
+                                            case "01" ->
+                                                m5_misura_no_motivazione = "Poca convinzione dell'allievo sull'idea imprenditoriale";
+                                            case "02" ->
+                                                m5_misura_no_motivazione = "Poca convenienza e/o difficile realizzazione dell'idea imprenditoriale";
+                                            case "03" ->
+                                                m5_misura_no_motivazione = "Indecisione dell'allievo sulla scelta auto-imprenditoriale";
+                                            case "04" ->
+                                                m5_misura_no_motivazione = "Carenza di motivazione personale";
+                                            case "05" ->
+                                                m5_misura_no_motivazione = "Difficoltà a reperire finanziamenti";
+                                            case "06" ->
+                                                m5_misura_no_motivazione = "Difficoltà burocratiche legate a permessi, certificazioni, ecc.";
+                                            case "07" ->
+                                                m5_misura_no_motivazione = "Mancanza di strumenti finanziari di agevolazione";
+                                            case "08" ->
+                                                m5_misura_no_motivazione = "Altro";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         AtomicInteger indicecolonna = new AtomicInteger(0);
                         XSSFRow row = getRow(sh1, indiceriga.get());
                         indiceriga.addAndGet(1);
@@ -891,28 +1257,55 @@ public class Sicilia_gestione {
 
                         setCell(getCell(row, indicecolonna.addAndGet(1)), cellStyle, rs0.getString("a.orec_totali") == null ? "0.0" : rs0.getString("a.orec_totali").trim(), false, true);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), cellStyle, rs0.getString("a.orec_fasea") == null ? "0.0" : rs0.getString("a.orec_fasea").trim(), false, true);
-
                         //MANCA MODELLO 5
+
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_grado_completezza);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_probabilita);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_forma_giuridica);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), "");
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_ateco);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_sede);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_comune_localizzazione);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_provincia_localizzazione);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_regione_localizzazione);
+
+                        if (m5_totale_fabbisogno.equals("")) {
+
+                            setCell(getCell(row, indicecolonna.addAndGet(1)), "");
+                        } else {
+                            setCell(getCell(row, indicecolonna.addAndGet(1)), cellStyleCUR, m5_totale_fabbisogno, false, true);
+
+                        }
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_misura_individuata);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_misura_si_nome);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_misura_si_tipo);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), "");
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_misura_si_motivazione.toUpperCase());
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_misura_no_motivazione);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), "");
+
                         maxrow.set(indicecolonna.get());
                     }
                 }
-                for (int i = 0; i < 56; i++) {
+                for (int i = 0; i < 70; i++) {
                     sh1.autoSizeColumn(i);
                 }
                 wb.write(outputStream);
 
             }
             log.log(Level.WARNING, "{0} RILASCIATO CORRETTAMENTE.", fileout);
+            if (save) {
+                String upd = "UPDATE estrazioni SET path = '" + fileout + "' WHERE idestrazione=2";
+                db1.getConnection().createStatement().executeUpdate(upd);
 
-            String upd = "UPDATE estrazioni SET path = '" + fileout + "' WHERE idestrazione=2";
-            db1.getConnection().createStatement().executeUpdate(upd);
+            }
             db1.closeDB();
         } catch (Exception e) {
             log.severe(estraiEccezione(e));
         }
     }
 
-    public void report_docenti() {
+    public void report_docenti(boolean save) {
         try {
 
             String hostbando = conf.getString("db.host") + ":3306/enm_sicilia_prod";
@@ -995,17 +1388,18 @@ public class Sicilia_gestione {
                 wb.write(outputStream);
             }
             log.log(Level.WARNING, "{0} RILASCIATO CORRETTAMENTE.", fileout);
+            if (save) {
+                String upd = "UPDATE estrazioni SET path = '" + fileout + "' WHERE idestrazione=1";
+                db1.getConnection().createStatement().executeUpdate(upd);
 
-            String upd = "UPDATE estrazioni SET path = '" + fileout + "' WHERE idestrazione=1";
-            db1.getConnection().createStatement().executeUpdate(upd);
+            }
             db1.closeDB();
-
         } catch (Exception e) {
             log.severe(estraiEccezione(e));
         }
     }
 
-    public void report_pf() {
+    public void report_pf(boolean save) {
         try {
 
             String fileing = "/mnt/mcn/yisu_sicilia/estrazioni/Report_ProgettiFormativi_Sicilia.xlsx";
@@ -1220,8 +1614,9 @@ public class Sicilia_gestione {
 
                         AtomicInteger ALLIEVIISCRITTI = new AtomicInteger(0);
                         AtomicInteger ALLIEVIVALIDATI = new AtomicInteger(0);
+                        AtomicInteger ALLIEVIUPTO48A = new AtomicInteger(0);
                         int idpr = rs0.getInt("pf.idprogetti_formativi");
-                        String sql1_foglio2 = "SELECT a.idallievi,a.id_statopartecipazione FROM allievi a WHERE a.idprogetti_formativi=" + idpr;
+                        String sql1_foglio2 = "SELECT a.idallievi,a.id_statopartecipazione,a.orec_fasea FROM allievi a WHERE a.idprogetti_formativi=" + idpr;
                         try (ResultSet rs1 = db1.getConnection().createStatement().executeQuery(sql1_foglio2)) {
                             while (rs1.next()) {
                                 String statoallievo = rs1.getString("a.id_statopartecipazione");
@@ -1229,6 +1624,11 @@ public class Sicilia_gestione {
                                     ALLIEVIVALIDATI.addAndGet(1);
                                 }
                                 ALLIEVIISCRITTI.addAndGet(1);
+
+                                double orec_fasea = rs1.getDouble("a.orec_fasea");
+                                if (orec_fasea >= 48.0) {
+                                    ALLIEVIUPTO48A.addAndGet(1);
+                                }
                             }
                         }
 
@@ -1236,7 +1636,7 @@ public class Sicilia_gestione {
                         setCell(getCell(row, indicecolonna.addAndGet(1)), String.valueOf(ALLIEVIVALIDATI.get()));
 
                         //  DA CALCOLARE IN BASE ALLE ORE FASE_A > 48
-                        setCell(getCell(row, indicecolonna.addAndGet(1)), String.valueOf(0));
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), String.valueOf(ALLIEVIUPTO48A.get()));
 
                     }
                 }
@@ -1245,9 +1645,11 @@ public class Sicilia_gestione {
             }
 
             log.log(Level.WARNING, "{0} RILASCIATO CORRETTAMENTE.", fileout);
+            if (save) {
+                String upd = "UPDATE estrazioni SET path = '" + fileout + "' WHERE idestrazione=3";
+                db1.getConnection().createStatement().executeUpdate(upd);
+            }
 
-            String upd = "UPDATE estrazioni SET path = '" + fileout + "' WHERE idestrazione=3";
-            db1.getConnection().createStatement().executeUpdate(upd);
             db1.closeDB();
         } catch (Exception e) {
             log.severe(estraiEccezione(e));
@@ -1282,11 +1684,16 @@ public class Sicilia_gestione {
         }
     }
 
-    public void ore_ud() {
+    public void ore_ud(String sql_adhoc) {
         Db_Gest db0 = new Db_Gest(this.host);
 
         List<Long> idallievi = new ArrayList<>();
-        String sql = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
+        String sql;
+        if (sql_adhoc == null) {
+            sql = "SELECT a.idallievi FROM allievi a WHERE a.id_statopartecipazione IN (10,12,13,14,15,16,18,19)";
+        } else {
+            sql = sql_adhoc;
+        }
         try (Statement st = db0.getConnection().createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 idallievi.add(rs.getLong(1));
@@ -1312,33 +1719,11 @@ public class Sicilia_gestione {
                         ore += rs1.getInt(2);
                     }
                 }
-//                if (MOD_codici.size() == 4 && MOD_codici.get(0).startsWith("A")) {
-//                    String ud11_1 = "A-11A_A-11B";
-//                    String ud11_2 = "A-11B_A-11C";
-//                    String ud11_3 = "A-11C_A-11D";
-//                    MOD_codici.add(ud11_1);
-//                    MOD_codici.add(ud11_2);
-//                    MOD_codici.add(ud11_3);
-//                    MOD_ore.put(ud11_1, "5");
-//                    MOD_ore.put(ud11_2, "5");
-//                    MOD_ore.put(ud11_3, "5");
-//                } else if (MOD_codici.size() == 4 && MOD_codici.get(0).startsWith("B")) {
-//                    String ud11_1 = "B-1A_B-1B";
-//                    String ud11_2 = "B-1B_B-1C";
-//                    String ud11_3 = "B-1C_B-1D";
-//                    MOD_codici.add(ud11_1);
-//                    MOD_codici.add(ud11_2);
-//                    MOD_codici.add(ud11_3);
-//                    MOD_ore.put(ud11_1, "5");
-//                    MOD_ore.put(ud11_2, "5");
-//                    MOD_ore.put(ud11_3, "5");
-//                }
                 String nomemodulo = "";
                 for (String m1 : MOD_codici) {
                     nomemodulo += m1 + "_";
                 }
                 nomemodulo = StringUtils.chop(nomemodulo);
-
                 for (Long idallievo : idallievi) {
 
                     String sql2_F0 = "SELECT r.totaleorerendicontabili,r.data FROM registro_completo r WHERE r.idutente=" + idallievo
@@ -1496,21 +1881,50 @@ public class Sicilia_gestione {
         db0.closeDB();
     }
 
+    public void ritira_allievi_zero() {
+        Db_Gest db = new Db_Gest(this.host);
+        String sql0 = "SELECT a.idallievi FROM allievi a, progetti_formativi p WHERE a.idprogetti_formativi = p.idprogetti_formativi "
+                + "AND a.orec_totali = 0 AND a.id_statopartecipazione IN (10,12,13,14,15,18,19) AND p.stato IN ('F','DVB','IV','CK','EVI','CO')";
+        try (Statement st0 = db.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
+            while (rs0.next()) {
+                String upd = "UPDATE allievi SET id_statopartecipazione = '16' WHERE idallievi = ?";
+                try (PreparedStatement ps1 = db.getConnection().prepareStatement(upd)) {
+                    ps1.setInt(1, rs0.getInt(1));
+                    boolean es = ps1.executeUpdate() > 0;
+                    log.log(Level.INFO, "{0} : {1}", new Object[]{ps1.toString(), es});
+                }
+            }
+        } catch (Exception ex1) {
+            log.severe(estraiEccezione(ex1));
+        }
+        db.closeDB();
+    }
+
     public void imposta_fineattivita() {
         Db_Gest db = new Db_Gest(this.host);
+        int soglia = parseIntR(db.getPath("fc.sogliaore"));
         String sql0 = "SELECT p.idprogetti_formativi FROM progetti_formativi p WHERE p.stato = 'ATB' AND p.`end` < CURDATE()";
         try (Statement st0 = db.getConnection().createStatement(); ResultSet rs0 = st0.executeQuery(sql0)) {
             while (rs0.next()) {
                 String idpr = rs0.getString(1);
-                String sql1 = "SELECT a.idallievi,a.gruppo_faseB,a.idprogetti_formativi FROM allievi a "
+                String sql1 = "SELECT a.idallievi,a.gruppo_faseB,a.idprogetti_formativi,a.orec_faseb FROM allievi a "
                         + "WHERE a.id_statopartecipazione = '15' "
                         + "AND a.idprogetti_formativi = " + idpr;
                 boolean fineattivita = true;
+                boolean okallievi = false;
                 List<String> idlezioniconvalidate = new ArrayList<>();
                 try (Statement st1 = db.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
                     while (rs1.next()) {
                         String idallievi = rs1.getString(1);
                         String gruppo_fb = rs1.getString(2);
+                        try {
+                            if (rs1.getDouble(4) >= soglia) {
+                                okallievi = true;
+                            }
+                        } catch (Exception ex1) {
+                            log.severe(estraiEccezione(ex1));
+                        }
+
                         String sql2 = "SELECT la.convalidata,p.datalezione,p.idlezioneriferimento FROM presenzelezioniallievi la, presenzelezioni p WHERE la.idallievi=" + idallievi + " AND p.idpresenzelezioni=la.idpresenzelezioni "
                                 + "AND p.idlezioneriferimento IN (SELECT m.id_lezionimodelli FROM lezioni_modelli m WHERE m.id_modelli_progetto IN "
                                 + "(SELECT mp.id_modello FROM modelli_progetti mp WHERE mp.id_progettoformativo = " + idpr + ") AND m.gruppo_faseB IN (0," + gruppo_fb + "))"
@@ -1522,7 +1936,7 @@ public class Sicilia_gestione {
                                     idlezioniconvalidate.add(rs2.getString(3));
                                 } else {
                                     if (!idlezioniconvalidate.contains(rs2.getString(3))) {
-                                    log.log(Level.WARNING, "PROGETTO {0} - ALLIEVO {1} : NON ANCORA CONVALIDATA LEZIONE {2}", new Object[]{idpr, idallievi, rs2.getString(2)});
+                                        log.log(Level.WARNING, "PROGETTO {0} - ALLIEVO {1} : NON ANCORA CONVALIDATA LEZIONE {2}", new Object[]{idpr, idallievi, rs2.getString(2)});
                                         fineattivita = false;
                                         break;
                                     }
@@ -1535,16 +1949,43 @@ public class Sicilia_gestione {
                 } catch (Exception ex2) {
                     log.severe(estraiEccezione(ex2));
                 }
+
                 if (fineattivita) {
-                    try (Statement st3 = db.getConnection().createStatement()) {
-                        String upd = "UPDATE progetti_formativi SET stato = 'F' WHERE idprogetti_formativi=" + idpr;
-                        boolean es3 = st3.executeUpdate(upd) > 0;
-                        if (es3) {
-                            log.log(Level.INFO, "PROGETTO {0} IMPOSTATO IN FINE ATTIVITA'.", idpr);
-                        }else{
-                            log.log(Level.SEVERE, "ERRORE NELL''UPDATE DEL PROGETTO {0}", idpr);
+
+                    if (okallievi) {
+                        try (Statement st3 = db.getConnection().createStatement()) {
+                            String upd = "UPDATE progetti_formativi SET stato = 'F' WHERE idprogetti_formativi=" + idpr;
+                            boolean es3 = st3.executeUpdate(upd) > 0;
+                            if (es3) {
+                                log.log(Level.WARNING, "PROGETTO {0} IMPOSTATO IN FINE ATTIVITA'.", idpr);
+                            } else {
+                                log.log(Level.SEVERE, "ERRORE NELL''UPDATE DEL PROGETTO {0}", idpr);
+                            }
+                        }
+                    } else {
+                        try (Statement st3 = db.getConnection().createStatement()) {
+                            String upd = "UPDATE progetti_formativi SET stato = 'FE' WHERE idprogetti_formativi=" + idpr;
+                            boolean es3 = st3.executeUpdate(upd) > 0;
+                            if (es3) {
+                                log.log(Level.WARNING, "PROGETTO {0} IMPOSTATO IN RIGETTATO FINE ATTIVITA'.", idpr);
+                                String sql4 = "SELECT a.idallievi FROM allievi a WHERE a.idprogetti_formativi=" + idpr + " AND a.id_statopartecipazione IN (10,12,13,14,15,18,19)";
+                                try (Statement st4 = db.getConnection().createStatement(); ResultSet rs4 = st4.executeQuery(sql4)) {
+                                    while (rs4.next()) {
+                                        String idallievo = rs4.getString(1);
+                                        String upd5 = "UPDATE allievi SET id_statopartecipazione='16' WHERE idallievi = ?";
+                                        try (PreparedStatement ps5 = db.getConnection().prepareStatement(upd5)) {
+                                            ps5.setString(1, idallievo);
+                                            ps5.executeUpdate();
+                                            log.log(Level.WARNING, "ALLIEVO {0} IMPOSTATO IN RIGETTATO.", idallievo);
+                                        }
+                                    }
+                                }
+                            } else {
+                                log.log(Level.SEVERE, "ERRORE NELL''UPDATE DEL PROGETTO {0}", idpr);
+                            }
                         }
                     }
+
                 } else {
                     log.log(Level.INFO, "PROGETTO {0} ANCORA DA VALIDARE.", idpr);
                 }
@@ -1557,6 +1998,6 @@ public class Sicilia_gestione {
 
 //    public static void main(String[] args) {
 //        Sicilia_gestione sg = new Sicilia_gestione(false);
-//        sg.imposta_fineattivita();
+//        sg.report_allievi(false);
 //    }
 }

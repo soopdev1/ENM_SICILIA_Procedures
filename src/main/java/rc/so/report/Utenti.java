@@ -17,6 +17,8 @@ public class Utenti {
     int id;
     String cognome, nome, descrizione, cf, ruolo, email;
 
+    String gruppofaseB;
+
     public Utenti(int id, String cognome, String nome, String cf, String ruolo, String email) {
         this.id = id;
         this.cognome = cognome;
@@ -27,7 +29,26 @@ public class Utenti {
         this.email = email;
     }
 
+    public Utenti(int id, String cognome, String nome, String cf, String ruolo, String email, String gruppofaseB) {
+        this.id = id;
+        this.cognome = cognome;
+        this.nome = nome;
+        this.descrizione = nome + " " + cognome;
+        this.cf = cf;
+        this.ruolo = ruolo;
+        this.email = email;
+        this.gruppofaseB = gruppofaseB;
+    }
+
     public Utenti() {
+    }
+
+    public String getGruppofaseB() {
+        return gruppofaseB;
+    }
+
+    public void setGruppofaseB(String gruppofaseB) {
+        this.gruppofaseB = gruppofaseB;
     }
 
     public String getDescrizione() {
@@ -85,8 +106,7 @@ public class Utenti {
     public void setEmail(String email) {
         this.email = email;
     }
-    
-    
+
     @Override
     public String toString() {
         return ReflectionToStringBuilder.toString(this, JSON_STYLE);

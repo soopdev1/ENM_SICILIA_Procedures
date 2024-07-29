@@ -13,10 +13,10 @@ import rc.so.exe.Sicilia_gestione;
 public class Aggiornaore {
 
     public static void main(String[] args) {
-
+//        String sql = "SELECT a.idallievi FROM allievi a WHERE a.idallievi IN (14,47)";
         Sicilia_gestione sg = new Sicilia_gestione(false);
-        sg.ore_convalidateAllievi();
-        sg.ore_ud();
-
+//        sg.ore_convalidateAllievi(sql);
+//        sg.ore_ud(sql);
+        sg.ritira_allievi_zero();
     }
 }
