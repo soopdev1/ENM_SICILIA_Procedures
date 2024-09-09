@@ -1064,6 +1064,7 @@ public class Sicilia_gestione {
                         String m5_probabilita = "";
                         String m5_forma_giuridica = "";
                         String m5_ateco = "";
+                        String m5_ateco_DESC = "";
                         String m5_sede = "";
                         String m5_comune_localizzazione = "";
                         String m5_provincia_localizzazione = "";
@@ -1123,7 +1124,8 @@ public class Sicilia_gestione {
                                         ps16B.setString(1, rs16.getString("m.m5_ateco"));
                                         try (ResultSet rs16B = ps16B.executeQuery()) {
                                             if (rs16B.next()) {
-                                                m5_ateco = rs16B.getString("descrizione").toUpperCase();
+                                                m5_ateco = rs16.getString("m.m5_ateco");
+                                                m5_ateco_DESC = rs16B.getString("descrizione").toUpperCase();
                                             }
                                         }
                                     }
@@ -1264,6 +1266,7 @@ public class Sicilia_gestione {
                         setCell(getCell(row, indicecolonna.addAndGet(1)), m5_forma_giuridica);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), "");
                         setCell(getCell(row, indicecolonna.addAndGet(1)), m5_ateco);
+                        setCell(getCell(row, indicecolonna.addAndGet(1)), m5_ateco_DESC);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), m5_sede);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), m5_comune_localizzazione);
                         setCell(getCell(row, indicecolonna.addAndGet(1)), m5_provincia_localizzazione);

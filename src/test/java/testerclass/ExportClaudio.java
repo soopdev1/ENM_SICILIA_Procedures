@@ -36,7 +36,8 @@ public class ExportClaudio {
             //AULA NORMALE
             String sql3 = "SELECT s.idsedi,s.indirizzo,c.nome,a.ragionesociale,c.cod_provincia FROM sedi_formazione s, progetti_formativi p, soggetti_attuatori a, comuni c "
                     + "WHERE p.sedefisica IS NOT NULL AND s.idsedi = p.sedefisica AND a.idsoggetti_attuatori=s.idsoggetti_attuatori AND c.idcomune=s.comune GROUP BY s.idsedi";
-            try (PreparedStatement ps3 = db.getConnection().prepareStatement(sql3); ResultSet rs3 = ps3.executeQuery(); FileWriter fileWriter = new FileWriter("C:\\mnt\\mcn\\yisu_sicilia\\estrazioni\\" + now.toString(DF) + "_AULA.csv"); PrintWriter printWriter = new PrintWriter(fileWriter)) {
+            try (PreparedStatement ps3 = db.getConnection().prepareStatement(sql3); ResultSet rs3 = ps3.executeQuery(); 
+                    FileWriter fileWriter = new FileWriter("C:\\mnt\\mcn\\yisu_sicilia\\estrazioni\\" + now.toString(DF) + "_AULA.csv"); PrintWriter printWriter = new PrintWriter(fileWriter)) {
                 printWriter.println("ID AULA|INDIRIZZO|COMUNE|PROVINCIA|RAGIONE SOCIALE SOGGETTO ATTUATORE|CORSI ATTIVI|CORSI CONCLUSI|NUM ALLIEVI");
                 while (rs3.next()) {
                     String sede_id = rs3.getString(1);

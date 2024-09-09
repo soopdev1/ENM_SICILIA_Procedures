@@ -23,7 +23,7 @@ public class Regcomp {
         FaseB FB = new FaseB(testing);
 
         List<Integer> list_id_conclusi = new ArrayList<>();
-        list_id_conclusi.add(154);
+        list_id_conclusi.add(125);
 
         Complessivo c1 = new Complessivo(FA.getHost());
         list_id_conclusi.forEach(idpr -> {

@@ -18,15 +18,7 @@ public class FadManuale {
 
     public static void main(String[] args) {
 
-        int pf = 49;
-        
-//        DeD_gestione d = new DeD_gestione(false);
-////        
-////        d.verifica_stanze(pf);
-//        d.fad_allievi(pf, true);
-//        d.fad_docenti(pf, true);
-//        d.fad_ospiti(pf, true);
-        
+        int pf = 320;
         
         Sicilia_gestione n = new Sicilia_gestione(false);
         n.verifica_stanze(pf);
