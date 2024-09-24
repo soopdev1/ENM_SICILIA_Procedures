@@ -128,7 +128,7 @@ public class Rendicontazione {
                         });
 
                         File xlsx1 = prospetto_riepilogo(idestrazione, idpr);
-                        File xlsx2 = prospetto_riepilogo(idestrazione, idpr);
+                        File xlsx2 = prospetto_riepilogo_allievi(idestrazione, idpr);
 
                         if (xlsx1 != null && xlsx2 != null) {
 
@@ -263,11 +263,12 @@ public class Rendicontazione {
                     try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
                         if (rs1.next()) {
                             String cip = rs1.getString(1).toUpperCase();
-                            String CIP_VALUE = cip + "_FASE A";
+                            
                             String sql2 = "SELECT * FROM allievi a WHERE a.idprogetti_formativi = " + idpr + " AND a.orec_fasea >= " + soglia + " ORDER BY codicefiscale";
 
                             try (Statement st2 = db1.getConnection().createStatement(); ResultSet rs2 = st2.executeQuery(sql2)) {
                                 while (rs2.next()) {
+                                    String CIP_VALUE = cip + "_FASE A";
                                     int gb = rs2.getInt("a.gruppo_faseB");
                                     String ALL_C_VALUE = rs2.getString("a.codicefiscale").toUpperCase().trim();
                                     String ALL_D_VALUE = rs2.getString("a.nome").toUpperCase().trim();
@@ -598,7 +599,7 @@ public class Rendicontazione {
         return output_xlsx;
     }
 
-    public static void main(String[] args) {
-        generaRendicontazione(true);
-    }
+//    public static void main(String[] args) {
+//        generaRendicontazione(true);
+//    }
 }
