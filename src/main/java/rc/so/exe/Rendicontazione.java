@@ -5,10 +5,13 @@ import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -28,6 +31,7 @@ import static rc.so.exe.Constant.estraiEccezione;
 import static rc.so.exe.Constant.sdfITA;
 import static rc.so.exe.Constant.zipListFiles;
 import static rc.so.exe.Sicilia_gestione.log;
+import static rc.so.exe.Utils.calcolaintervallomillis;
 import static rc.so.exe.Utils.getCell;
 import static rc.so.exe.Utils.getRow;
 import static rc.so.exe.Utils.parseIntR;
@@ -70,6 +74,9 @@ public class Rendicontazione {
     public static final int ALL_N_VALUE = 10;
     public static final String ALL_BFN_VALUE = "NO";
 
+    private static final String CAL_IDCORSO = "";
+    private static final String CAL_STAGE = "N";
+
     public static void generaRendicontazione(boolean complete) {
         try {
             FaseA FA = new FaseA(false);
@@ -84,14 +91,17 @@ public class Rendicontazione {
                     }
                 }
 
-                System.out.println("rc.so.exe.Rendicontazione.generaRendicontazione() " + idpr.toString());
-
                 File xlsx1 = prospetto_riepilogo(0, idpr);
                 File xlsx2 = prospetto_riepilogo_allievi(0, idpr);
+                List<File> calendar = list_calendar(idpr);
+                File xlsx3 = prospetto_riepilogo_calendario_allievi(0, idpr);
 
                 List<File> output = new ArrayList<>();
                 output.add(xlsx1);
                 output.add(xlsx2);
+                output.addAll(calendar);
+                output.add(xlsx3);
+
                 String pathdest = db1.getPath("output_excel_archive");
                 DateTime oggi = new DateTime();
                 String nomerend_cod = "R0";
@@ -100,6 +110,13 @@ public class Rendicontazione {
                 File zip = new File(filezip);
 
                 zipListFiles(output, zip);
+                try {
+                    for (File f1 : output) {
+                        f1.delete();
+                        f1.deleteOnExit();
+                    }
+                } catch (Exception e) {
+                }
                 System.out.println("rc.so.exe.Rendicontazione.generaRendicontazione() " + zip.getPath());
             } else {
                 Gson gson = new Gson();
@@ -132,9 +149,15 @@ public class Rendicontazione {
 
                         if (xlsx1 != null && xlsx2 != null) {
 
+                            List<File> calendar = list_calendar(idpr);
+
+                            File xlsx3 = prospetto_riepilogo_calendario_allievi(idestrazione, idpr);
+
                             List<File> output = new ArrayList<>();
                             output.add(xlsx1);
                             output.add(xlsx2);
+                            output.add(xlsx3);
+                            output.addAll(calendar);
                             String pathdest = db1.getPath("output_excel_archive");
                             DateTime oggi = new DateTime();
                             String nomerend_cod = "R" + idestrazione;
@@ -156,6 +179,13 @@ public class Rendicontazione {
                                         ps2.setInt(1, idpr.get(i));
                                         ps2.executeUpdate();
                                     }
+                                }
+                                try {
+                                    for (File f1 : output) {
+                                        f1.delete();
+                                        f1.deleteOnExit();
+                                    }
+                                } catch (Exception e) {
                                 }
                             }
 
@@ -206,6 +236,223 @@ public class Rendicontazione {
         };
     }
 
+    private static List<File> list_calendar(List<Integer> list_idpr) {
+        List<File> output = new ArrayList<>();
+        DateTime oggi = new DateTime();
+        try {
+            FaseA FA = new FaseA(false);
+            Db_Gest db1 = new Db_Gest(FA.getHost());
+            String pathdest = db1.getPath("output_excel_archive");
+            String fileing = pathdest + "YISUS_Prospetto_Calendario_v1.xlsx";
+            File ing = new File(fileing);
+
+            for (int ss = 0; ss < list_idpr.size(); ss++) {
+
+                int idpr = list_idpr.get(ss);
+
+                String sql1 = "SELECT m.id_modello,m.modello,p.cip FROM modelli_progetti m, progetti_formativi p WHERE m.id_progettoformativo=p.idprogetti_formativi AND m.id_progettoformativo = ? AND m.modello IN (3,4) AND m.stato='OK' ORDER BY m.modello";
+                try (PreparedStatement ps1 = db1.getConnection().prepareStatement(sql1)) {
+                    ps1.setInt(1, idpr);
+                    try (ResultSet rs1 = ps1.executeQuery()) {
+                        while (rs1.next()) {
+                            int modello = rs1.getInt(2);
+                            int id_modello = rs1.getInt(1);
+                            String CIP = rs1.getString(3);
+                            if (modello == 3) { // FASE A
+
+                                String sql2 = "SELECT l.giorno,l.orario_start,l.orario_end,d.codicefiscale,c.codice_ud "
+                                        + "FROM lezioni_modelli l, docenti d, lezione_calendario c "
+                                        + "WHERE l.id_docente=d.iddocenti AND l.id_lezionecalendario=c.id_lezionecalendario "
+                                        + "AND l.id_modelli_progetto = ? ORDER BY l.id_lezionecalendario,l.giorno,l.orario_start";
+
+                                AtomicInteger index_row = new AtomicInteger(1);
+                                try (PreparedStatement ps2 = db1.getConnection().prepareStatement(sql2)) {
+                                    ps2.setInt(1, id_modello);
+                                    try (InputStream is = new FileInputStream(ing); XSSFWorkbook wb = new XSSFWorkbook(is, false)) {
+                                        XSSFSheet sh_corso = wb.getSheet("calendario");
+                                        XSSFFont font_string = wb.createFont();
+                                        font_string.setFontHeightInPoints((short) 12);
+
+                                        XSSFCellStyle style_normal = wb.createCellStyle();
+                                        style_normal.setVerticalAlignment(VerticalAlignment.CENTER);
+                                        style_normal.setAlignment(HorizontalAlignment.CENTER);
+                                        style_normal.setBorderBottom(BorderStyle.THIN);
+                                        style_normal.setBorderTop(BorderStyle.THIN);
+                                        style_normal.setBorderRight(BorderStyle.THIN);
+                                        style_normal.setBorderLeft(BorderStyle.THIN);
+                                        style_normal.setFont(font_string);
+
+                                        XSSFDataFormat xssfDataFormat = wb.createDataFormat();
+                                        XSSFCellStyle cellStyle_int = wb.createCellStyle();
+                                        cellStyle_int.setBorderBottom(BorderStyle.THIN);
+                                        cellStyle_int.setBorderTop(BorderStyle.THIN);
+                                        cellStyle_int.setBorderRight(BorderStyle.THIN);
+                                        cellStyle_int.setBorderLeft(BorderStyle.THIN);
+                                        cellStyle_int.setVerticalAlignment(VerticalAlignment.CENTER);
+                                        cellStyle_int.setDataFormat(xssfDataFormat.getFormat(formatdataCellint));
+
+                                        XSSFCellStyle style_int = wb.createCellStyle();
+                                        style_int.setVerticalAlignment(VerticalAlignment.CENTER);
+                                        style_int.setAlignment(HorizontalAlignment.CENTER);
+                                        style_int.setBorderBottom(BorderStyle.THIN);
+                                        style_int.setBorderTop(BorderStyle.THIN);
+                                        style_int.setBorderRight(BorderStyle.THIN);
+                                        style_int.setBorderLeft(BorderStyle.THIN);
+                                        style_int.setDataFormat(xssfDataFormat.getFormat(formatdataCellint));
+                                        style_int.setFont(font_string);
+
+                                        try (ResultSet rs2 = ps2.executeQuery()) {
+                                            while (rs2.next()) {
+
+                                                String giorno = rs2.getString(1);
+                                                String orario_start = rs2.getString(2);
+                                                String orario_end = rs2.getString(3);
+                                                String codicefiscale = rs2.getString(4);
+                                                String codice_ud = rs2.getString(5);
+
+                                                String ore = String.valueOf(calcolaintervallomillis(orario_start, orario_end) / 3600000.00);
+
+//                                                System.out.println(giorno.split("-")[2] + separator + giorno.split("-")[1] + separator + giorno.split("-")[0] + separator
+//                                                        + orario_start.split(":")[0] + separator + orario_start.split(":")[1] + separator + ore + separator + CAL_IDCORSO + separator
+//                                                        + CAL_STAGE + separator + codicefiscale + separator + codice_ud);
+                                                XSSFRow riga_A = getRow(sh_corso, index_row.get());
+                                                index_row.addAndGet(1);
+
+                                                AtomicInteger index_column = new AtomicInteger(0);
+
+                                                setCell(getCell(riga_A, index_column.get()), style_int, giorno.split("-")[2], true, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, giorno.split("-")[1], true, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, giorno.split("-")[0], true, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, orario_start.split(":")[0], true, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, orario_start.split(":")[1], true, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, ore, false, true);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, CAL_IDCORSO, false, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, CAL_STAGE, false, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, codicefiscale, false, false);
+                                                setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, codice_ud, false, false);
+
+                                            }
+                                        }
+
+                                        for (int ix = 0; ix < 10; ix++) {
+                                            sh_corso.autoSizeColumn(ix);
+                                        }
+                                        String CIP_VALUE = CIP + "_FASE A";
+                                        File output_xlsx = new File(pathdest + "/" + CIP_VALUE + "_CALENDARIO_" + oggi.toString(timestamp) + ".xlsx");
+                                        try (FileOutputStream outputStream = new FileOutputStream(output_xlsx)) {
+                                            wb.write(outputStream);
+                                            log.log(Level.INFO, "FILE RILASCIATO: {0}", output_xlsx.getPath());
+                                            output.add(output_xlsx);
+                                        }
+                                    }
+                                }
+
+                            } else { //FASE B . GRUPPI
+
+                                String sql2 = "SELECT DISTINCT(l.gruppo_faseB) FROM lezioni_modelli l WHERE l.id_modelli_progetto = ? ORDER BY l.gruppo_faseB";
+
+                                try (PreparedStatement ps2 = db1.getConnection().prepareStatement(sql2)) {
+                                    ps2.setInt(1, id_modello);
+                                    try (ResultSet rs2 = ps2.executeQuery()) {
+                                        while (rs2.next()) {
+                                            int gruppo_faseb = rs2.getInt(1);
+
+                                            String sql3 = "SELECT l.giorno,l.orario_start,l.orario_end,d.codicefiscale,c.codice_ud "
+                                                    + "FROM lezioni_modelli l, docenti d, lezione_calendario c "
+                                                    + "WHERE l.id_docente=d.iddocenti AND l.id_lezionecalendario=c.id_lezionecalendario "
+                                                    + "AND l.id_modelli_progetto = ? AND l.gruppo_faseB = ? ORDER BY l.id_lezionecalendario,l.giorno,l.orario_start";
+
+                                            try (InputStream is = new FileInputStream(ing); XSSFWorkbook wb = new XSSFWorkbook(is, false)) {
+
+                                                XSSFSheet sh_corso = wb.getSheet("calendario");
+                                                XSSFFont font_string = wb.createFont();
+                                                font_string.setFontHeightInPoints((short) 12);
+
+                                                XSSFCellStyle style_normal = wb.createCellStyle();
+                                                style_normal.setVerticalAlignment(VerticalAlignment.CENTER);
+                                                style_normal.setAlignment(HorizontalAlignment.CENTER);
+                                                style_normal.setBorderBottom(BorderStyle.THIN);
+                                                style_normal.setBorderTop(BorderStyle.THIN);
+                                                style_normal.setBorderRight(BorderStyle.THIN);
+                                                style_normal.setBorderLeft(BorderStyle.THIN);
+                                                style_normal.setFont(font_string);
+
+                                                XSSFDataFormat xssfDataFormat = wb.createDataFormat();
+                                                XSSFCellStyle cellStyle_int = wb.createCellStyle();
+                                                cellStyle_int.setBorderBottom(BorderStyle.THIN);
+                                                cellStyle_int.setBorderTop(BorderStyle.THIN);
+                                                cellStyle_int.setBorderRight(BorderStyle.THIN);
+                                                cellStyle_int.setBorderLeft(BorderStyle.THIN);
+                                                cellStyle_int.setVerticalAlignment(VerticalAlignment.CENTER);
+                                                cellStyle_int.setDataFormat(xssfDataFormat.getFormat(formatdataCellint));
+
+                                                XSSFCellStyle style_int = wb.createCellStyle();
+                                                style_int.setVerticalAlignment(VerticalAlignment.CENTER);
+                                                style_int.setAlignment(HorizontalAlignment.CENTER);
+                                                style_int.setBorderBottom(BorderStyle.THIN);
+                                                style_int.setBorderTop(BorderStyle.THIN);
+                                                style_int.setBorderRight(BorderStyle.THIN);
+                                                style_int.setBorderLeft(BorderStyle.THIN);
+                                                style_int.setDataFormat(xssfDataFormat.getFormat(formatdataCellint));
+                                                style_int.setFont(font_string);
+                                                AtomicInteger index_row = new AtomicInteger(1);
+
+                                                try (PreparedStatement ps3 = db1.getConnection().prepareStatement(sql3)) {
+                                                    ps3.setInt(1, id_modello);
+                                                    ps3.setInt(2, gruppo_faseb);
+                                                    try (ResultSet rs3 = ps3.executeQuery()) {
+                                                        while (rs3.next()) {
+                                                            String giorno = rs3.getString(1);
+                                                            String orario_start = rs3.getString(2);
+                                                            String orario_end = rs3.getString(3);
+                                                            String codicefiscale = rs3.getString(4);
+                                                            String codice_ud = rs3.getString(5);
+                                                            String ore = String.valueOf(calcolaintervallomillis(orario_start, orario_end) / 3600000.00);
+
+                                                            XSSFRow riga_A = getRow(sh_corso, index_row.get());
+                                                            index_row.addAndGet(1);
+
+                                                            AtomicInteger index_column = new AtomicInteger(0);
+
+                                                            setCell(getCell(riga_A, index_column.get()), style_int, giorno.split("-")[2], true, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, giorno.split("-")[1], true, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, giorno.split("-")[0], true, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, orario_start.split(":")[0], true, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, orario_start.split(":")[1], true, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, ore, false, true);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, CAL_IDCORSO, false, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, CAL_STAGE, false, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, codicefiscale, false, false);
+                                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, codice_ud, false, false);
+                                                        }
+                                                    }
+                                                }
+                                                for (int ix = 0; ix < 10; ix++) {
+                                                    sh_corso.autoSizeColumn(ix);
+                                                }
+                                                String CIP_VALUE = CIP + "_FASE B" + gruppo_faseb;
+                                                File output_xlsx = new File(pathdest + "/" + CIP_VALUE + "_CALENDARIO_" + oggi.toString(timestamp) + ".xlsx");
+                                                try (FileOutputStream outputStream = new FileOutputStream(output_xlsx)) {
+                                                    wb.write(outputStream);
+                                                    log.log(Level.INFO, "FILE RILASCIATO: {0}", output_xlsx.getPath());
+                                                    output.add(output_xlsx);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        } catch (Exception ex1) {
+            log.severe(estraiEccezione(ex1));
+        }
+        return output;
+    }
+
     private static File prospetto_riepilogo_allievi(int idestrazione, List<Integer> list_idpr) {
         File output_xlsx = null;
         DateTime oggi = new DateTime();
@@ -218,7 +465,7 @@ public class Rendicontazione {
             String fileing = pathdest + "YISUS_Prospetto_Allievi_v1.xlsx";
             File ing = new File(fileing);
 
-            try (XSSFWorkbook wb = new XSSFWorkbook(new FileInputStream(ing), false)) {
+            try (InputStream is = new FileInputStream(ing); XSSFWorkbook wb = new XSSFWorkbook(is, false)) {
 
                 XSSFSheet sh_corso = wb.getSheet("Tracciato partecipante");
                 XSSFFont font_string = wb.createFont();
@@ -263,7 +510,7 @@ public class Rendicontazione {
                     try (Statement st1 = db1.getConnection().createStatement(); ResultSet rs1 = st1.executeQuery(sql1)) {
                         if (rs1.next()) {
                             String cip = rs1.getString(1).toUpperCase();
-                            
+
                             String sql2 = "SELECT * FROM allievi a WHERE a.idprogetti_formativi = " + idpr + " AND a.orec_fasea >= " + soglia + " ORDER BY codicefiscale";
 
                             try (Statement st2 = db1.getConnection().createStatement(); ResultSet rs2 = st2.executeQuery(sql2)) {
@@ -425,7 +672,7 @@ public class Rendicontazione {
             String fileing = pathdest + "YISUS_Prospetto_Riepilogo_v1.xlsx";
             File ing = new File(fileing);
 
-            try (XSSFWorkbook wb = new XSSFWorkbook(new FileInputStream(ing), false)) {
+            try (InputStream is = new FileInputStream(ing); XSSFWorkbook wb = new XSSFWorkbook(is, false)) {
 
                 XSSFSheet sh_corso = wb.getSheet("CORSO");
                 XSSFFont font_string = wb.createFont();
@@ -460,7 +707,7 @@ public class Rendicontazione {
                 style_int.setFont(font_string);
 
                 AtomicInteger index_row = new AtomicInteger(1);
-                AtomicInteger indice = new AtomicInteger(0);
+//                AtomicInteger indice = new AtomicInteger(0);
 
                 for (int ss = 0; ss < list_idpr.size(); ss++) {
 
@@ -477,7 +724,6 @@ public class Rendicontazione {
 
                             List<Utenti> allievi_OK = db1.list_Allievi_OK(idpr);
 
-                            System.out.println("rc.so.exe.Rendicontazione.prospetto_riepilogo() " + cip);
                             String sql2 = "SELECT DISTINCT(l.gruppo_faseB) FROM lezioni_modelli l WHERE l.id_modelli_progetto IN (SELECT m.id_modello FROM modelli_progetti m WHERE m.id_progettoformativo = "
                                     + idpr + " AND m.modello=4)";
                             List<Integer> gruppiB = new ArrayList<>();
@@ -599,7 +845,204 @@ public class Rendicontazione {
         return output_xlsx;
     }
 
-//    public static void main(String[] args) {
-//        generaRendicontazione(true);
-//    }
+    private static File prospetto_riepilogo_calendario_allievi(int idestrazione, List<Integer> list_idpr) {
+        DateTime oggi = new DateTime();
+        String nomerend_cod = "R" + idestrazione;
+        String nomerend = nomerend_cod + "_" + oggi.toString("ddMMyyyy");
+        try {
+            FaseA FA = new FaseA(false);
+            Db_Gest db1 = new Db_Gest(FA.getHost());
+            String pathdest = db1.getPath("output_excel_archive");
+            String fileing = pathdest + "YISUS_Prospetto_Allievi_Calendario_v1.xlsx";
+            File ing = new File(fileing);
+            try (InputStream is = new FileInputStream(ing); XSSFWorkbook wb = new XSSFWorkbook(is, false)) {
+
+                XSSFSheet sh_registro = wb.getSheet("REGISTRO NEW");
+                XSSFFont font_string = wb.createFont();
+                font_string.setFontHeightInPoints((short) 12);
+
+                XSSFCellStyle style_normal = wb.createCellStyle();
+                style_normal.setVerticalAlignment(VerticalAlignment.CENTER);
+                style_normal.setAlignment(HorizontalAlignment.CENTER);
+                style_normal.setBorderBottom(BorderStyle.THIN);
+                style_normal.setBorderTop(BorderStyle.THIN);
+                style_normal.setBorderRight(BorderStyle.THIN);
+                style_normal.setBorderLeft(BorderStyle.THIN);
+                style_normal.setFont(font_string);
+
+                XSSFDataFormat xssfDataFormat = wb.createDataFormat();
+                XSSFCellStyle cellStyle_int = wb.createCellStyle();
+                cellStyle_int.setBorderBottom(BorderStyle.THIN);
+                cellStyle_int.setBorderTop(BorderStyle.THIN);
+                cellStyle_int.setBorderRight(BorderStyle.THIN);
+                cellStyle_int.setBorderLeft(BorderStyle.THIN);
+                cellStyle_int.setVerticalAlignment(VerticalAlignment.CENTER);
+                cellStyle_int.setDataFormat(xssfDataFormat.getFormat(formatdataCellint));
+
+                XSSFCellStyle style_int = wb.createCellStyle();
+                style_int.setVerticalAlignment(VerticalAlignment.CENTER);
+                style_int.setAlignment(HorizontalAlignment.CENTER);
+                style_int.setBorderBottom(BorderStyle.THIN);
+                style_int.setBorderTop(BorderStyle.THIN);
+                style_int.setBorderRight(BorderStyle.THIN);
+                style_int.setBorderLeft(BorderStyle.THIN);
+                style_int.setDataFormat(xssfDataFormat.getFormat(formatdataCellint));
+                style_int.setFont(font_string);
+
+                AtomicInteger index_row = new AtomicInteger(1);
+
+                for (int ss = 0; ss < list_idpr.size(); ss++) {
+
+                    int idpr = list_idpr.get(ss);
+
+                    String sql1 = "SELECT m.idallievi,m.codicefiscale,p.cip FROM allievi m, progetti_formativi p WHERE p.idprogetti_formativi=m.idprogetti_formativi AND m.id_statopartecipazione=15 AND m.idprogetti_formativi = ? ORDER BY m.cognome";
+                    try (PreparedStatement ps1 = db1.getConnection().prepareStatement(sql1)) {
+                        ps1.setInt(1, idpr);
+                        try (ResultSet rs1 = ps1.executeQuery()) {
+                            while (rs1.next()) {
+
+                                Long idallievo = rs1.getLong(1);
+                                String cf = rs1.getString(2).toUpperCase().trim();
+                                String cip = rs1.getString(3).toUpperCase().trim();
+
+                                String sql2 = "SELECT p.datalezione,c.codice_ud,p.orainizio,p.orafine,d.codicefiscale,l.durataconvalidata,m.giorno,m.orario_start,m.orario_end "
+                                        + "FROM presenzelezioniallievi l, presenzelezioni p, docenti d, lezioni_modelli m, lezione_calendario c "
+                                        + "WHERE c.id_lezionecalendario=m.id_lezionecalendario AND m.id_lezionimodelli=p.idlezioneriferimento "
+                                        + "AND p.idpresenzelezioni=l.idpresenzelezioni AND p.iddocente=d.iddocenti "
+                                        + "AND l.presente=1 AND p.idprogetto = ? AND l.idallievi = ?";
+
+                                try (PreparedStatement ps2 = db1.getConnection().prepareStatement(sql2)) {
+                                    ps2.setInt(1, idpr);
+                                    ps2.setLong(2, idallievo);
+                                    try (ResultSet rs2 = ps2.executeQuery()) {
+                                        while (rs2.next()) {
+                                            String ud = rs2.getString(2);
+                                            DateTime d1 = new DateTime(rs2.getDate(1).getTime());
+                                            DateTime d2 = new DateTime(rs2.getDate(7).getTime());
+                                            String idr = cip + "_" + ud + "_" + d1.toString("yyyyMMdd");
+                                            String datainizioPRES = d1.toString("dd/MM/yyyy") + " " + rs2.getString(3);
+                                            String datafinePRES = d1.toString("dd/MM/yyyy") + " " + rs2.getString(4);
+
+                                            String datainizioLEZ = d2.toString("dd/MM/yyyy") + " " + StringUtils.substring(rs2.getString(8), 0, 5);
+                                            String datafineLEZ = d2.toString("dd/MM/yyyy") + " " + StringUtils.substring(rs2.getString(9), 0, 5);
+
+                                            String cfdoc = rs2.getString(5);
+                                            long presenza = rs2.getLong(6);
+                                            String[] ore_minuti = Utils.calcoladurata(presenza);
+
+                                            XSSFRow riga_A = getRow(sh_registro, index_row.get());
+                                            index_row.addAndGet(1);
+
+                                            AtomicInteger index_column = new AtomicInteger(0);
+
+                                            setCell(getCell(riga_A, index_column.get()), style_normal, cf, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, cip, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, idr, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, ud, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datainizioLEZ, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datafineLEZ, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datainizioPRES, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datafinePRES, false, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, ore_minuti[0], true, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, ore_minuti[1], true, false);
+                                            setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, cfdoc, false, false);
+                                        }
+                                    }
+                                }
+                                String sql3 = "SELECT r.idriunione,r.nud,r.data,r.totaleorerendicontabili FROM registro_completo r WHERE r.ruolo='ALLIEVO' "
+                                        + "AND r.idutente = ? AND r.idprogetti_formativi = ?";
+                                try (PreparedStatement ps3 = db1.getConnection().prepareStatement(sql3)) {
+                                    ps3.setLong(1, idallievo);
+                                    ps3.setInt(2, idpr);
+                                    try (ResultSet rs2 = ps3.executeQuery()) {
+                                        while (rs2.next()) {
+                                            String idr = rs2.getString(1);
+                                            String ud = rs2.getString(2);
+                                            DateTime d1 = new DateTime(rs2.getDate(3).getTime());
+                                            long presenza = rs2.getLong(4);
+                                            String[] ore_minuti = Utils.calcoladurata(presenza);
+                                            String sql4 = "SELECT d.codicefiscale,c.orainizio,c.orafine,d.iddocenti "
+                                                    + "FROM registro_completo c, docenti d WHERE c.idutente=d.iddocenti "
+                                                    + "AND c.idriunione = ? AND c.ruolo<>'ALLIEVO' ";
+
+                                            try (PreparedStatement ps4 = db1.getConnection().prepareStatement(sql4)) {
+                                                ps4.setString(1, idr);
+                                                try (ResultSet rs4 = ps4.executeQuery()) {
+                                                    if (rs4.next()) {
+
+                                                        String datainizioPRES = d1.toString("dd/MM/yyyy") + " " + rs4.getString(2);
+                                                        String datafinePRES = d1.toString("dd/MM/yyyy") + " " + rs4.getString(3);
+                                                        String cfdoc = rs4.getString(1);
+
+                                                        String sql5 = "SELECT lm.orario_start,lm.orario_end "
+                                                                + "FROM lezioni_modelli lm, modelli_progetti mp, lezione_calendario lc, unita_didattiche ud "
+                                                                + "WHERE mp.id_modello=lm.id_modelli_progetto AND lc.id_lezionecalendario=lm.id_lezionecalendario "
+                                                                + "AND ud.codice=lc.codice_ud AND lm.tipolez='F' AND lm.id_docente = ? AND mp.id_progettoformativo = ? AND lm.giorno = ?";
+
+                                                        try (PreparedStatement ps5 = db1.getConnection().prepareStatement(sql5)) {
+                                                            ps5.setLong(1, rs4.getLong(4));
+                                                            ps5.setInt(2, idpr);
+                                                            ps5.setString(3, rs2.getString(3));
+                                                            try (ResultSet rs5 = ps5.executeQuery()) {
+                                                                if (rs5.next()) {
+                                                                    String datainizioLEZ = d1.toString("dd/MM/yyyy") + " " + StringUtils.substring(rs5.getString(1), 0, 5);
+                                                                    String datafineLEZ = d1.toString("dd/MM/yyyy") + " " + StringUtils.substring(rs5.getString(2), 0, 5);
+                                                                    XSSFRow riga_A = getRow(sh_registro, index_row.get());
+                                                                    index_row.addAndGet(1);
+
+                                                                    AtomicInteger index_column = new AtomicInteger(0);
+
+                                                                    setCell(getCell(riga_A, index_column.get()), style_normal, cf, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, cip, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, idr, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, ud, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datainizioLEZ, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datafineLEZ, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datainizioPRES, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, datafinePRES, false, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, ore_minuti[0], true, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_int, ore_minuti[1], true, false);
+                                                                    setCell(getCell(riga_A, index_column.addAndGet(1)), style_normal, cfdoc, false, false);
+                                                                }
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                }
+
+//                for (int ix = 0; ix < 13; ix++) {
+//                    sh_registro.autoSizeColumn(ix);
+//                }
+                File output_xlsx = new File(pathdest + "/" + nomerend + "_CalendarioAllievi_" + new DateTime().toString(timestamp) + ".xlsx");
+                try (FileOutputStream outputStream = new FileOutputStream(output_xlsx)) {
+                    wb.write(outputStream);
+                    log.log(Level.INFO, "FILE RILASCIATO: {0}", output_xlsx.getPath());
+                    return output_xlsx;
+                }
+
+            }
+        } catch (Exception ex1) {
+            log.severe(estraiEccezione(ex1));
+        }
+        return null;
+    }
+
+    public static void main(String[] args) {
+        generaRendicontazione(true);
+
+//        List<Integer> start = new ArrayList<>();
+//        start.add(10);
+////
+//        prospetto_riepilogo_calendario_allievi(0, start);
+    }
 }

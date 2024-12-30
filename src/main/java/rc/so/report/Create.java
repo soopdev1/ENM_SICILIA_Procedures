@@ -187,7 +187,7 @@ public class Create {
                 doc1getOradilogout.append(doc1.getOradilogout()).append("\n");
             }
 
-            Presenti docente = new Presenti("", "", "", "", doc1getOradilogin.toString(), doc1getOradilogout.toString(), "", "");
+            Presenti docente = new Presenti("", "", "", "", doc1getOradilogin.toString(), doc1getOradilogout.toString(), "", "","");
 
             if (docente != null && !allievi.isEmpty()) {
                 List<Interval> accessi_docente = new ArrayList<>();

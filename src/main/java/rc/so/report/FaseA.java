@@ -1001,11 +1001,15 @@ public class FaseA {
                                                         try {
                                                             int idallievo = Integer.parseInt(azione.split(";")[1]);
                                                             Utenti u = allievi.stream().filter(al -> al.getId() == idallievo).findFirst().get();
+//                                                            azione = azioni.stream().filter(az -> az.getCod().equalsIgnoreCase(tipoazione)).findFirst().get().getDescrizione() + " -> "
+//                                                            + u.getNome() + " "
+//                                                            + u.getCognome();
+//                                                            Track t1 = new Track("USER", tipoazione, azione, date, day, null);
+//                                                            tracking.add(t1);
                                                             azione = azioni.stream().filter(az -> az.getCod().equalsIgnoreCase(tipoazione)).findFirst().get().getDescrizione() + " -> "
-                                                            + u.getNome() + " "
-                                                            + u.getCognome();
-                                                            Track t1 = new Track("USER", tipoazione, azione, date, day, null);
-                                                            tracking.add(t1);
+                                                            + u.getCf().toUpperCase();
+                                                            Track t2 = new Track("USER", tipoazione, azione, date, day, null);
+                                                            tracking.add(t2);
                                                             tutti.add(u);
                                                         } catch (Exception ex) {
                                                             log.severe(Constant.estraiEccezione(ex));
@@ -1094,11 +1098,16 @@ public class FaseA {
                                 List<Track> finaltr = tracking.stream().distinct().collect(Collectors.toList());
                                 finaltr.forEach(tr1 -> {
 
-                                    boolean contentallievo = allievi.stream().anyMatch(al -> tr1.getDescr().contains(al.getDescrizione()));
+                                    boolean contentallievo = allievi.stream().anyMatch(al -> tr1.getDescr().contains(al.getCf()) || tr1.getDescr().contains(al.getDescrizione()));
                                     if (contentallievo) {
-                                        Utenti a = allievi.stream().filter(al -> tr1.getDescr().contains(al.getDescrizione())).findAny().get();
-                                        Utenti a1 = allievi_corretti.stream().filter(al -> al.getId() == a.getId()).findAny().get();
-
+                                        Utenti a;
+                                        try {
+                                            a = allievi.stream().filter(al -> tr1.getDescr().contains(al.getCf())).findAny().get();
+                                        } catch (Exception e) {
+                                            a = allievi.stream().filter(al -> tr1.getDescr().contains(al.getDescrizione())).findAny().get();
+                                        }
+                                        int id_check = a != null ? a.getId() : -3;
+                                        Utenti a1 = allievi_corretti.stream().filter(al -> al.getId() == id_check).findAny().get();
                                         Presenti pr1 = new Presenti(a1.getNome(), a1.getCognome(), a.getCf(), a.getEmail(), a.getRuolo());
                                         if (tr1.getDescr().contains("Login")) {
                                             pr1.setLogin(true);
@@ -1216,7 +1225,7 @@ public class FaseA {
                                             Presenti per_report = new Presenti(selected.getCognome().toUpperCase(), selected.getNome().toUpperCase(),
                                                     selected.getRuolo(), selected.getEmail(),
                                                     loginvalue.toString().trim(), logoutvalue.toString().trim(),
-                                                    duratacollegamento, duratacollegamento);
+                                                    duratacollegamento, duratacollegamento,selected.getCf());
                                             per_report.setMillistotaleore(duratalogin);
                                             report.add(per_report);
                                         }
@@ -1280,7 +1289,7 @@ public class FaseA {
                                             ps.setString(18, r1.getOradilogout());
                                             ps.setLong(19, r1.getMillistotaleore());
                                             ps.setLong(20, r1.getMillistotaleorerendicontabili());
-                                            ps.setInt(21, getIdUser(db2, r1.getNome(), r1.getCognome(), idpr, Integer.parseInt(datisa[2]), r1.getRuolo()));
+                                            ps.setInt(21, getIdUser(db2, r1.getNome(), r1.getCognome(), idpr, Integer.parseInt(datisa[2]), r1.getRuolo(),r1.getCf()));
                                             if (save) {
                                                 ps.execute();
                                                 log.log(Level.WARNING, "{0} INFO) REGISTRO {1} {2} OK.", new Object[]{idpr, day, idriuunione});

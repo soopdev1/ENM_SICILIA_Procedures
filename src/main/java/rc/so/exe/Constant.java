@@ -365,7 +365,7 @@ public class Constant {
 //        }
 //
 //        lezionidelgiorno.sort(Comparator.comparing(a -> a.getStart()));
-////        System.out.println(lezionidelgiorno.size());
+    ////        System.out.println(lezionidelgiorno.size());
 //        if (lezionidelgiorno.size() == 2) {
 //            for (int z = 0; z < lezionidelgiorno.size(); z++) {
 //                Lezione lezioneoggi = lezionidelgiorno.get(z);
@@ -675,17 +675,30 @@ public class Constant {
         }
     }
 
-    public static int getIdUser(Db_Gest db, String nome, String cognome, int idpr, int idsa, String ruolo) {
+    public static int getIdUser(Db_Gest db, String nome, String cognome, int idpr, int idsa, String ruolo, String cf) {
         if (ruolo.equalsIgnoreCase("DOCENTE")) {
-            return getIdDocente(db, nome, cognome, idsa);
+            return getIdDocente(db, nome, cognome, idsa, cf);
         } else if (ruolo.equalsIgnoreCase("ALLIEVO")) {
-            return getIdAllievo(db, nome, cognome, idpr);
+            return getIdAllievo(db, nome, cognome, idpr, cf);
         }
         return 0;
     }
 
-    private static int getIdAllievo(Db_Gest db, String nome, String cognome, int idpr) {
+    private static int getIdAllievo(Db_Gest db, String nome, String cognome, int idpr, String cf) {
         try {
+
+            if (cf != null && !cf.trim().equals("")) {
+                String sql = "SELECT idallievi FROM allievi WHERE codicefiscale = ? AND idprogetti_formativi = ? AND id_statopartecipazione IN ('10','12','13','14','15','18','19') ORDER BY idallievi DESC LIMIT 1";
+                try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                    ps.setString(1, cf);
+                    ps.setInt(2, idpr);
+                    ResultSet rs = ps.executeQuery();
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+
             String sql = "SELECT idallievi FROM allievi WHERE nome = ? AND cognome = ? AND idprogetti_formativi = ? AND id_statopartecipazione IN ('10','12','13','14','15','18','19') ORDER BY idallievi DESC LIMIT 1";
             try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
                 ps.setString(1, nome);
@@ -702,8 +715,22 @@ public class Constant {
         return 0;
     }
 
-    private static int getIdDocente(Db_Gest db, String nome, String cognome, int idsa) {
+    private static int getIdDocente(Db_Gest db, String nome, String cognome, int idsa, String cf) {
         try {
+
+            if (cf != null && !cf.trim().equals("")) {
+                String sql = "SELECT iddocenti FROM docenti WHERE codicefiscale = ? AND idsoggetti_attuatori = ? AND stato = ? ORDER BY iddocenti DESC LIMIT 1";
+                try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
+                    ps.setString(1, cf);
+                    ps.setInt(2, idsa);
+                    ps.setString(3, "A");
+                    ResultSet rs = ps.executeQuery();
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+
             String sql = "SELECT iddocenti FROM docenti WHERE nome = ? AND cognome = ? AND idsoggetti_attuatori = ? AND stato = ? ORDER BY iddocenti DESC LIMIT 1";
             try (PreparedStatement ps = db.getConnection().prepareStatement(sql)) {
                 ps.setString(1, nome);

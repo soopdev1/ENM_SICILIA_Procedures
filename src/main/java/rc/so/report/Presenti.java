@@ -25,7 +25,7 @@ public class Presenti {
     
     long millistotaleore,millistotaleorerendicontabili,orelezione;
     
-    public Presenti(String cognome, String nome, String ruolo, String email, String oradilogin, String oradilogout, String totaleore, String totaleorerendicontabili) {
+    public Presenti(String cognome, String nome, String ruolo, String email, String oradilogin, String oradilogout, String totaleore, String totaleorerendicontabili, String cf) {
         this.cognome = cognome;
         this.nome = nome;
         this.ruolo = ruolo;
@@ -37,6 +37,7 @@ public class Presenti {
         this.millistotaleore = 0L;
         this.millistotaleorerendicontabili = 0L;
         this.orelezione = 0L;
+        this.cf = cf;
     }
     
     public Presenti(String nome, String cognome, String cf, String email, String ruolo) {

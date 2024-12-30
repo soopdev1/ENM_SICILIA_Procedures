@@ -18,6 +18,7 @@ import java.util.Date;
 import static java.util.Locale.ITALY;
 import java.util.ResourceBundle;
 import java.util.StringTokenizer;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -224,8 +225,6 @@ public class Utils {
         return riga;
     }
 
-    
-    
     public static String getJsonString(JsonObject base, String fieldname) {
         try {
             JsonPrimitive o1 = base.getAsJsonPrimitive(fieldname);
@@ -242,7 +241,7 @@ public class Utils {
         }
         return "";
     }
-    
+
     public static long calcolaintervallomillis(String orastart, String oraend) {
         try {
             DateTime st_data1 = new DateTime(2000, 1, 1, Integer.parseInt(orastart.split(":")[0]), Integer.parseInt(orastart.split(":")[1]));
@@ -253,5 +252,17 @@ public class Utils {
             return 0L;
         }
     }
-    
+
+    public static String[] calcoladurata(long millis) {
+        if (millis == 0 || millis < 0) {
+            String[] out = {"0", "0"};
+            return out;
+        }
+        long hours = TimeUnit.MILLISECONDS.toHours(millis);
+        millis -= TimeUnit.HOURS.toMillis(hours);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
+        String[] out = {String.valueOf(hours), String.valueOf(minutes)};
+        return out;
+    }
+
 }

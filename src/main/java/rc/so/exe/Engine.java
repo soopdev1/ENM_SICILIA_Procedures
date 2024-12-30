@@ -457,53 +457,23 @@ public class Engine {
                             String nomecampo = rs2.getString("campo");
                             String valorecampo = rs2.getString("valore").toUpperCase().trim();
                             switch (nomecampo) {
-                                case "nome":
-                                    d1.setNome(valorecampo);
-                                    break;
-                                case "cognome":
-                                    d1.setCognome(valorecampo);
-                                    break;
-                                case "cfuser":
-                                    d1.setCodiceFiscale(valorecampo);
-                                    break;
-                                case "pec":
-                                    d1.setPEC(valorecampo.toLowerCase());
-                                    break;
-                                case "societa":
-                                    d1.setRagioneSociale(valorecampo);
-                                    break;
-                                case "piva":
-                                    d1.setPartitaIVA(valorecampo);
-                                    break;
-                                case "sedecomune":
-                                    d1.setSedeComune(valorecampo);
-                                    break;
-                                case "sedecap":
-                                    d1.setSedeCap(valorecampo);
-                                    break;
-                                case "cell":
-                                    d1.setCellulare(valorecampo);
-                                    break;
-                                case "data":
-                                    d1.setDataNascita(valorecampo);
-                                    break;
-                                case "email":
-                                    d1.setEmail(valorecampo);
-                                    break;
-                                case "sedeindirizzo":
-                                    d1.setSedeIndirizzo(valorecampo);
-                                    break;
-                                case "docric1":
-                                    d1.setNumeroDocumento(valorecampo);
-                                    break;
-                                case "datasc1":
-                                    d1.setScadenzaDoc(valorecampo);
-                                    break;
-                                case "caricasoc":
-                                    d1.setCaricaSoc(valorecampo);
-                                    break;
-                                default:
-                                    break;
+                                case "nome" -> d1.setNome(valorecampo);
+                                case "cognome" -> d1.setCognome(valorecampo);
+                                case "cf" -> d1.setCodiceFiscale(valorecampo);
+                                case "pec" -> d1.setPEC(valorecampo.toLowerCase());
+                                case "societa" -> d1.setRagioneSociale(valorecampo);
+                                case "piva" -> d1.setPartitaIVA(valorecampo);
+                                case "sedecomune" -> d1.setSedeComune(valorecampo);
+                                case "sedecap" -> d1.setSedeCap(valorecampo);
+                                case "cell" -> d1.setCellulare(valorecampo);
+                                case "data" -> d1.setDataNascita(valorecampo);
+                                case "email" -> d1.setEmail(valorecampo);
+                                case "sedeindirizzo" -> d1.setSedeIndirizzo(valorecampo);
+                                case "docric1" -> d1.setNumeroDocumento(valorecampo);
+                                case "datasc1" -> d1.setScadenzaDoc(valorecampo);
+                                case "caricasoc" -> d1.setCaricaSoc(valorecampo);
+                                default -> {
+                                }
                             }
                         }
                     }

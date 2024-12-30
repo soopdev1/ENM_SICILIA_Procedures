@@ -18,7 +18,7 @@ public class FadManuale {
 
     public static void main(String[] args) {
 
-        int pf = 320;
+        int pf = 394;
         
         Sicilia_gestione n = new Sicilia_gestione(false);
         n.verifica_stanze(pf);
