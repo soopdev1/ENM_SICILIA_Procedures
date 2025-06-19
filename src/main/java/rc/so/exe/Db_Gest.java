@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import static java.sql.ResultSet.CONCUR_READ_ONLY;
 import static java.sql.ResultSet.CONCUR_UPDATABLE;
 import static java.sql.ResultSet.TYPE_SCROLL_INSENSITIVE;
 import java.sql.ResultSetMetaData;
@@ -16,12 +17,20 @@ import java.util.List;
 import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import org.apache.commons.lang3.StringUtils;
 import static org.apache.commons.lang3.StringUtils.stripAccents;
+import org.joda.time.DateTime;
+import org.joda.time.Period;
+import org.joda.time.PeriodType;
+import static rc.so.exe.Constant.formatStringtoStringDate;
+import static rc.so.exe.Constant.patternSql;
 import static rc.so.exe.Sicilia_gestione.log;
 import static rc.so.exe.Utils.conf;
 import static rc.so.exe.Utils.estraiEccezione;
 import static rc.so.exe.Utils.formatStringtoStringDateSQL;
 import static rc.so.exe.Utils.parseIntR;
+import static rc.so.exe.Utils.patternITA;
+import rc.so.report.Registro_completo;
 import rc.so.report.Utenti;
 
 /**
@@ -612,7 +621,7 @@ public class Db_Gest {
     public List<Utenti> list_Docenti(int idpr) {
         List<Utenti> out = new ArrayList<>();
         try {
-            String sql = "SELECT iddocenti,nome,cognome,codicefiscale,email FROM docenti WHERE iddocenti IN "
+            String sql = "SELECT iddocenti,nome,cognome,codicefiscale,email,fascia FROM docenti WHERE iddocenti IN "
                     + "(SELECT iddocenti FROM progetti_docenti WHERE idprogetti_formativi = " + idpr + ")";
             try ( Statement st = this.c.createStatement();  ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) {
@@ -621,6 +630,7 @@ public class Db_Gest {
                             (rs.getString("nome").toUpperCase().trim()),
                             rs.getString("codicefiscale").toUpperCase(), "DOCENTE",
                             rs.getString("email").toLowerCase());
+                    u.setFascia(rs.getString("fascia"));
                     out.add(u);
                 }
             }
@@ -790,6 +800,191 @@ public class Db_Gest {
         } catch (Exception ex) {
             log.severe(estraiEccezione(ex));
         }
+        return out;
+    }
+    
+    
+    public List<Registro_completo> registro_modello6(int idpr) {
+        List<Registro_completo> registro = new ArrayList<>();
+        try {
+            //FAD
+            String sql = "SELECT * FROM registro_completo WHERE idprogetti_formativi = ? GROUP BY ruolo,idutente,data,gruppofaseb ORDER BY data,gruppofaseb";
+            try (PreparedStatement ps = this.c.prepareStatement(sql, TYPE_SCROLL_INSENSITIVE, CONCUR_READ_ONLY)) {
+                ps.setInt(1, idpr);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+
+                        long orerend = rs.getLong(21);
+                        Registro_completo rc = new Registro_completo(
+                                rs.getInt(1),
+                                rs.getInt(2),
+                                rs.getInt(3),
+                                rs.getString(4),
+                                new DateTime(rs.getDate(5).getTime()),
+                                rs.getString(6),
+                                rs.getInt(7),
+                                rs.getString(8),
+                                rs.getString(9),
+                                rs.getLong(10),
+                                rs.getString(11),
+                                rs.getString(12),
+                                rs.getInt(13),
+                                rs.getString(14),
+                                rs.getString(15),
+                                rs.getString(16),
+                                rs.getString(17),
+                                rs.getString(18),
+                                rs.getString(19),
+                                rs.getLong(20),
+                                orerend,
+                                rs.getInt(23));
+                        registro.add(rc);
+                    }
+                }
+            }
+
+            //PRESENZA
+            String sql1 = "SELECT * FROM presenzelezioni p, progetti_formativi f, lezioni_modelli lm, lezione_calendario lc , docenti d "
+                    + " WHERE d.iddocenti=p.iddocente AND lc.id_lezionecalendario=lm.id_lezionecalendario AND lm.id_lezionimodelli=p.idlezioneriferimento AND "
+                    + " p.idprogetto=f.idprogetti_formativi AND p.idprogetto = ? ORDER BY p.datalezione,p.orainizio";
+            try (PreparedStatement ps1 = this.c.prepareStatement(sql1, TYPE_SCROLL_INSENSITIVE, CONCUR_READ_ONLY)) {
+                ps1.setInt(1, idpr);
+                try (ResultSet rs1 = ps1.executeQuery()) {
+                    while (rs1.next()) {
+                        String sql2 = "SELECT * FROM presenzelezioniallievi a, allievi l WHERE a.idallievi=l.idallievi AND a.idpresenzelezioni = ? AND a.convalidata = 1 GROUP BY l.idallievi";
+                        try (PreparedStatement ps2 = this.c.prepareStatement(sql2, TYPE_SCROLL_INSENSITIVE, CONCUR_READ_ONLY)) {
+                            ps2.setInt(1, rs1.getInt("p.idpresenzelezioni"));
+                            try (ResultSet rs2 = ps2.executeQuery()) {
+                                int numpartecipanti = 0;
+                                while (rs2.next()) {
+                                    numpartecipanti++;
+                                }
+                                rs2.beforeFirst();
+
+                                long durata = calcolaintervallomillis(rs1.getString("p.orainizio"), rs1.getString("p.orafine"));
+
+                                String fase = rs1.getString("lc.codice_ud").startsWith("A") ? "A" : "B";
+
+                                int gruppofaseb = fase.equals("A") ? 0 : rs1.getInt("lm.gruppo_faseB");
+
+                                Registro_completo docente = new Registro_completo(0,
+                                        idpr,
+                                        rs1.getInt("f.idsoggetti_attuatori"),
+                                        rs1.getString("f.cip"),
+                                        new DateTime(rs1.getDate("p.datalezione").getTime()),
+                                        rs1.getString("f.cip") + "_" + fase + "_" + rs1.getString("lc.codice_ud") + "_" + StringUtils.replace(rs1.getString("p.datalezione"), "-", ""),
+                                        numpartecipanti,
+                                        rs1.getString("p.orainizio"),
+                                        rs1.getString("p.orafine"),
+                                        durata,
+                                        rs1.getString("lc.codice_ud"),
+                                        fase,
+                                        gruppofaseb,
+                                        "DOCENTE",
+                                        rs1.getString("d.cognome"),
+                                        rs1.getString("d.nome"),
+                                        rs1.getString("d.email"),
+                                        rs1.getString("p.orainizio"),
+                                        rs1.getString("p.orafine"),
+                                        durata,
+                                        durata,
+                                        rs1.getInt("d.iddocenti"));
+                                registro.add(docente);
+
+                                while (rs2.next()) {
+
+                                    Registro_completo rc = new Registro_completo(0,
+                                            idpr,
+                                            rs1.getInt("f.idsoggetti_attuatori"),
+                                            rs1.getString("f.cip"),
+                                            new DateTime(rs1.getDate("p.datalezione").getTime()),
+                                            rs1.getString("f.cip") + "_" + fase + "_" + rs1.getString("lc.codice_ud") + "_" + StringUtils.replace(rs1.getString("p.datalezione"), "-", ""),
+                                            numpartecipanti,
+                                            rs1.getString("p.orainizio"),
+                                            rs1.getString("p.orafine"),
+                                            calcolaintervallomillis(rs1.getString("p.orainizio"), rs1.getString("p.orafine")),
+                                            rs1.getString("lc.codice_ud"),
+                                            fase,
+                                            gruppofaseb,
+                                            "ALLIEVO",
+                                            rs2.getString("l.cognome"),
+                                            rs2.getString("l.nome"),
+                                            rs2.getString("l.email"),
+                                            rs2.getString("a.orainizio"),
+                                            rs2.getString("a.orafine"),
+                                            rs2.getLong("a.durata"),
+                                            rs2.getLong("a.durataconvalidata"),
+                                            rs2.getInt("l.idallievi"));
+                                    registro.add(rc);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            registro.sort((d1, d2) -> d1.getData().compareTo(d2.getData()));
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+        }
+        return registro;
+    }
+    
+    private static long calcolaintervallomillis(String orastart, String oraend) {
+        try {
+            DateTime st_data1 = new DateTime(2000, 1, 1, Integer.parseInt(orastart.split(":")[0]), Integer.parseInt(orastart.split(":")[1]));
+            DateTime st_data2 = new DateTime(2000, 1, 1, Integer.parseInt(oraend.split(":")[0]), Integer.parseInt(oraend.split(":")[1]));
+            Period p = new Period(st_data1, st_data2, PeriodType.millis());
+            return p.getValue(0);
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+            return 0L;
+        }
+    }
+
+    public List<Items> calendario(int idpr) {
+
+        List<Items> out = new ArrayList<>();
+        List<Items> temp = new ArrayList<>();
+        try {
+
+            String sql = "SELECT lc.lezione,lm.giorno,lm.orario_start,lm.orario_end,ud.fase,lm.gruppo_faseB "
+                    + "FROM lezioni_modelli lm, modelli_progetti mp, lezione_calendario lc, "
+                    + "unita_didattiche ud, progetti_formativi p  "
+                    + "WHERE mp.id_modello=lm.id_modelli_progetto AND lc.id_lezionecalendario=lm.id_lezionecalendario "
+                    + "AND ud.codice=lc.codice_ud AND p.idprogetti_formativi=mp.id_progettoformativo AND mp.id_progettoformativo = ? "
+                    + "GROUP BY lm.gruppo_faseB,lm.giorno,lm.id_lezionecalendario ORDER BY lm.gruppo_faseB,lm.giorno";
+            try (PreparedStatement ps = this.c.prepareStatement(sql, TYPE_SCROLL_INSENSITIVE, CONCUR_READ_ONLY)) {
+                ps.setInt(1, idpr);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String fase = rs.getString("ud.fase").endsWith("A") ? "A" : "B";
+                        String gruppo = fase.equals("A") ? "1" : rs.getString("lm.gruppo_faseB");
+                        Items itm = new Items(fase,
+                                formatStringtoStringDate(rs.getString("lm.giorno"), patternSql, patternITA, false),
+                                rs.getString("lm.orario_start"),
+                                rs.getString("lm.orario_end"),
+                                gruppo);
+                        temp.add(itm);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.severe(estraiEccezione(ex));
+        }
+
+        for (int i = 0; i < temp.size(); i++) {
+            if (i == temp.size() - 1) {
+                out.add(temp.get(i));
+            } else {
+                if (temp.get(i).getData().equals(temp.get(i + 1).getData())) {
+                    out.add(new Items(temp.get(i).getFase(), temp.get(i).getData(), temp.get(i).getOrainizio(), temp.get(i + 1).getOrafine(), temp.get(i).getGruppo()));
+                    i++;
+                } else {
+                    out.add(temp.get(i));
+                }
+            }
+        }
+
         return out;
     }
 }

@@ -265,4 +265,20 @@ public class Utils {
         return out;
     }
 
+    
+    
+    public static final String BASE_PATH1 = "/mnt/mcn/yisu_sicilia";
+    public static final String BASE_PATH2 = "C:\\mnt\\mcn\\yisu_sicilia";
+
+    public static File createFile(String pathfile) {
+        try {
+            File dest = new File(pathfile);
+            if (dest.getCanonicalPath().startsWith(BASE_PATH1) || dest.getCanonicalPath().startsWith(BASE_PATH2)) {
+                return dest;
+            }
+        } catch (Exception e) {
+            System.err.println("ERRORE: " + estraiEccezione(e));
+        }
+        return null;
+    }
 }

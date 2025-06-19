@@ -15,7 +15,7 @@ import static org.apache.commons.lang3.builder.ToStringStyle.JSON_STYLE;
 public class Utenti {
 
     int id;
-    String cognome, nome, descrizione, cf, ruolo, email;
+    String cognome, nome, descrizione, cf, ruolo, email,fascia;
 
     String gruppofaseB;
 
@@ -41,6 +41,14 @@ public class Utenti {
     }
 
     public Utenti() {
+    }
+
+    public String getFascia() {
+        return fascia;
+    }
+
+    public void setFascia(String fascia) {
+        this.fascia = fascia;
     }
 
     public String getGruppofaseB() {
